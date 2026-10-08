@@ -6,7 +6,7 @@
   <title>Pulse – Home</title>
   <meta name="theme-color" content="#2563eb">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%232563eb'/%3E%3Cpath d='M5 17h5l3-7 5 13 3-6h6' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
@@ -52,21 +52,23 @@
 
       <!-- Left half: Health Factor chart -->
       <section class="card" aria-labelledby="hf-title">
-        <div class="card-head">
-          <div>
-            <h2 id="hf-title">Health Factor</h2>
-            <p class="sub">Your body and mind in one score</p>
-          </div>
-          <div class="range" role="group" aria-label="Time range">
-            <button type="button" data-days="21" aria-pressed="true">3 weeks</button>
-            <button type="button" data-days="90" aria-pressed="false">90 days</button>
-          </div>
+        <div>
+          <h2 id="hf-title">Health Factor</h2>
+          <p class="sub">Your body and mind in one score</p>
         </div>
         <div class="hf-now">
-          <span class="big" id="hf-big" aria-live="polite">66</span>
-          <span class="delta" id="hf-delta"></span>
+          <span class="big" id="hf-big">67</span>
+          <span class="muted">out of 100 today</span>
         </div>
-        <svg class="chart" id="chart" viewBox="0 0 640 270" role="img" aria-label="Health Factor chart"></svg>
+
+        <div class="chart-block">
+          <div class="chart-head"><h3>Last 3 weeks</h3><span class="chg" id="chg-21"></span></div>
+          <svg class="chart" id="chart-21" viewBox="0 0 640 220" role="img" aria-label="Health Factor, last 3 weeks"></svg>
+        </div>
+        <div class="chart-block">
+          <div class="chart-head"><h3>Last 90 days</h3><span class="chg" id="chg-90"></span></div>
+          <svg class="chart" id="chart-90" viewBox="0 0 640 220" role="img" aria-label="Health Factor, last 90 days"></svg>
+        </div>
       </section>
 
       <!-- Right half: daily check-in -->
@@ -222,65 +224,59 @@
         data.push(Math.round(54 + 12.5 * (i / 89) + (rand() - 0.5) * 3 + Math.sin(i / 3.5)));
       }
 
-      var W = 640, H = 270, PL = 34, PR = 14, PT = 14, PB = 30;
-      var svg = document.getElementById('chart');
       var big = document.getElementById('hf-big');
-      var deltaEl = document.getElementById('hf-delta');
-      var series = [], xs = [], ys = [], labels = {};
+      big.textContent = data[data.length - 1];
 
       function ago(idx, n) { var d = n - 1 - idx; return d === 0 ? 'Today' : d + (d === 1 ? ' day ago' : ' days ago'); }
 
-      var current = 21;
-      function render(n) {
-        current = n;
-        // Draw at the chart's real pixel width so labels stay readable on phones.
-        W = Math.max(260, Math.round(svg.getBoundingClientRect().width) || 640);
-        H = Math.max(190, Math.min(270, Math.round(W * 0.55)));
+      /* One chart per range. Each is drawn at its real pixel width so labels stay readable on phones. */
+      var CHARTS = [
+        { svg: document.getElementById('chart-21'), chg: document.getElementById('chg-21'), n: 21, span: '3 weeks',
+          ticks: [[0, '3 weeks ago'], [10, '10 days ago'], [20, 'Today']] },
+        { svg: document.getElementById('chart-90'), chg: document.getElementById('chg-90'), n: 90, span: '90 days',
+          ticks: [[0, '90 days ago'], [45, '45 days ago'], [89, 'Today']] }
+      ];
+
+      function drawChart(c) {
+        var svg = c.svg, n = c.n, PL = 34, PR = 14, PT = 14, PB = 30;
+        var W = Math.max(260, Math.round(svg.getBoundingClientRect().width) || 640);
+        var H = Math.max(170, Math.min(220, Math.round(W * 0.45)));
         svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
-        series = data.slice(-n);
+        var series = data.slice(-n);
         var min = Math.min.apply(null, series), max = Math.max.apply(null, series);
         var step = (max - min) > 18 ? 10 : 5;
         var lo = Math.floor((min - 2) / step) * step, hi = Math.ceil((max + 2) / step) * step;
         var px = function (k) { return PL + k * (W - PL - PR) / (n - 1); };
         var py = function (v) { return PT + (hi - v) * (H - PT - PB) / (hi - lo); };
-        xs = series.map(function (_, k) { return px(k); });
-        ys = series.map(py);
+        var xs = series.map(function (_, k) { return px(k); }), ys = series.map(py);
 
-        var out = '<defs><linearGradient id="hfFill" x1="0" y1="0" x2="0" y2="1">' +
+        var out = '<defs><linearGradient id="hfFill-' + n + '" x1="0" y1="0" x2="0" y2="1">' +
           '<stop offset="0" stop-color="#2563eb" stop-opacity=".22"/><stop offset="1" stop-color="#2563eb" stop-opacity="0"/></linearGradient></defs>';
         for (var v = lo; v <= hi; v += step) {
           out += '<line class="grid" x1="' + PL + '" x2="' + (W - PR) + '" y1="' + py(v) + '" y2="' + py(v) + '"/>' +
                  '<text x="' + (PL - 8) + '" y="' + (py(v) + 4) + '" text-anchor="end">' + v + '</text>';
         }
         var line = series.map(function (_, k) { return (k ? 'L' : 'M') + xs[k].toFixed(1) + ' ' + ys[k].toFixed(1); }).join(' ');
-        out += '<path d="' + line + ' L' + xs[n - 1].toFixed(1) + ' ' + (H - PB) + ' L' + xs[0].toFixed(1) + ' ' + (H - PB) + ' Z" fill="url(#hfFill)"/>';
+        out += '<path d="' + line + ' L' + xs[n - 1].toFixed(1) + ' ' + (H - PB) + ' L' + xs[0].toFixed(1) + ' ' + (H - PB) + ' Z" fill="url(#hfFill-' + n + ')"/>';
         out += '<path class="line" d="' + line + '"/>';
-
-        var ticks = n === 21 ? [[0, '3 weeks ago'], [10, '10 days ago'], [20, 'Today']]
-                             : [[0, '90 days ago'], [45, '45 days ago'], [89, 'Today']];
-        ticks.forEach(function (tk, k) {
-          var anchor = k === 0 ? 'start' : (k === ticks.length - 1 ? 'end' : 'middle');
+        c.ticks.forEach(function (tk, k) {
+          var anchor = k === 0 ? 'start' : (k === c.ticks.length - 1 ? 'end' : 'middle');
           out += '<text x="' + xs[tk[0]].toFixed(1) + '" y="' + (H - 8) + '" text-anchor="' + anchor + '">' + tk[1] + '</text>';
         });
         out += '<circle class="dot" cx="' + xs[n - 1].toFixed(1) + '" cy="' + ys[n - 1].toFixed(1) + '" r="5"/>';
-        out += '<g id="hover" hidden><line class="hover-line" y1="' + PT + '" y2="' + (H - PB) + '"/>' +
-               '<circle class="dot" r="5"/><g id="tip"><rect class="tip-bg" rx="7" height="26"/><text class="tip-text" y="17" text-anchor="middle"></text></g></g>';
-        out += '<rect x="' + PL + '" y="0" width="' + (W - PL - PR) + '" height="' + H + '" fill="transparent" id="hit"/>';
+        out += '<g class="hov" hidden><line class="hover-line" y1="' + PT + '" y2="' + (H - PB) + '"/>' +
+               '<circle class="dot" r="5"/><g class="tip"><rect class="tip-bg" rx="7" height="26"/><text class="tip-text" y="17" text-anchor="middle"></text></g></g>';
+        out += '<rect class="hit" x="' + PL + '" y="0" width="' + (W - PL - PR) + '" height="' + H + '" fill="transparent"/>';
         svg.innerHTML = out;
 
         var first = series[0], last = series[n - 1], diff = last - first;
-        big.textContent = last;
-        var span = n === 21 ? '3 weeks' : '90 days';
-        deltaEl.textContent = diff === 0 ? 'No change over the last ' + span : (diff > 0 ? '+' : '') + diff + ' over the last ' + span;
-        deltaEl.classList.toggle('down', diff < 0);
-        svg.setAttribute('aria-label', 'Health Factor over the last ' + (n === 21 ? '3 weeks' : '90 days') + ': from ' + first + ' to ' + last + ' out of 100.');
-        bindHover(n);
-      }
+        c.chg.textContent = diff === 0 ? 'No change over the last ' + c.span : (diff > 0 ? '+' : '') + diff + ' over the last ' + c.span;
+        c.chg.classList.toggle('down', diff < 0);
+        svg.setAttribute('aria-label', 'Health Factor over the last ' + c.span + ': from ' + first + ' to ' + last + ' out of 100.');
 
-      function bindHover(n) {
-        var hit = document.getElementById('hit'), g = document.getElementById('hover');
+        var hit = svg.querySelector('.hit'), g = svg.querySelector('.hov');
         var hl = g.querySelector('.hover-line'), dot = g.querySelector('circle');
-        var tip = document.getElementById('tip'), bg = tip.querySelector('rect'), tx = tip.querySelector('text');
+        var bg = g.querySelector('.tip rect'), tx = g.querySelector('.tip text');
         function show(e) {
           var r = svg.getBoundingClientRect();
           var x = (e.clientX - r.left) / r.width * W;
@@ -299,18 +295,12 @@
         hit.addEventListener('pointerleave', function () { g.setAttribute('hidden', ''); });
       }
 
-      var rangeBtns = document.querySelectorAll('.range button');
-      rangeBtns.forEach(function (b) {
-        b.addEventListener('click', function () {
-          rangeBtns.forEach(function (o) { o.setAttribute('aria-pressed', String(o === b)); });
-          render(Number(b.dataset.days));
-        });
-      });
-      render(21);
+      function renderCharts() { CHARTS.forEach(drawChart); }
+      renderCharts();
       var resizeTimer;
       window.addEventListener('resize', function () {
         clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(function () { render(current); }, 150);
+        resizeTimer = setTimeout(renderCharts, 150);
       });
 
       /* ---------- 30-day check-in calendar (sample history; index 29 = today) ---------- */

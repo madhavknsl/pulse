@@ -185,10 +185,10 @@
   /* ---------- baseline ---------- */
   function renderBaseline() {
     $('#baseline-body').innerHTML = '<p class="fine" style="margin-top:14px">Your starting point on ' + fmtDate(P.since) + ', and where you are now.</p><div class="delta-grid">' +
-      '<div class="delta"><div class="k">Health Factor</div><div class="v">54 <i>→</i> 67</div><div class="s">Day 1 to today</div></div>' +
-      '<div class="delta"><div class="k">PHQ-9</div><div class="v">14 <i>→</i> 12</div><div class="s">Out of 27</div></div>' +
-      '<div class="delta"><div class="k">GAD-7</div><div class="v">11 <i>→</i> 10</div><div class="s">Out of 21</div></div>' +
-      '<div class="delta"><div class="k">Weight</div><div class="v">' + (S.hide ? '•••' : '74.2 <i>→</i> ' + P.weight.toFixed(1)) + '</div><div class="s">' + (S.hide ? 'Hidden' : 'kg') + '</div></div></div>' +
+      '<div class="bcell"><div class="k">Health Factor</div><div class="v">54 <i>→</i> 67</div><div class="s">Day 1 to today</div></div>' +
+      '<div class="bcell"><div class="k">PHQ-9</div><div class="v">14 <i>→</i> 12</div><div class="s">Out of 27</div></div>' +
+      '<div class="bcell"><div class="k">GAD-7</div><div class="v">11 <i>→</i> 10</div><div class="s">Out of 21</div></div>' +
+      '<div class="bcell"><div class="k">Weight</div><div class="v">' + (S.hide ? '•••' : '74.2 <i>→</i> ' + P.weight.toFixed(1)) + '</div><div class="s">' + (S.hide ? 'Hidden' : 'kg') + '</div></div></div>' +
       '<p class="fine" style="margin-top:14px">PHQ-9 and GAD-7 are self-reported screening scores, not a diagnosis. Lower means fewer symptoms reported.</p>';
   }
 
