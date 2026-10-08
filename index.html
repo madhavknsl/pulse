@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Pulse – Track Better. Consult Smarter. Live Healthier.</title>
+  <meta name="description" content="Pulse helps you track your health between doctor visits and share a clear summary with your doctor.">
+  <meta name="theme-color" content="#2563eb">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%232563eb'/%3E%3Cpath d='M5 17h5l3-7 5 13 3-6h6' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="page">
+    <header class="site-header">
+      <a class="brand" href="./" aria-label="Pulse home">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <rect width="32" height="32" rx="9" fill="#2563eb"/>
+          <path d="M5 17h5l3-7 5 13 3-6h6" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        PULSE
+      </a>
+    </header>
+
+    <main class="landing">
+      <section class="hero">
+        <h1 class="tagline">
+          <span>Track Better.</span>
+          <span>Consult Smarter.</span>
+          <span class="accent">Live Healthier.</span>
+        </h1>
+        <p class="lead">Your daily health in one place, and a clear picture for your doctor between visits.</p>
+      </section>
+
+      <section class="login" aria-labelledby="login-title">
+        <h2 id="login-title">Welcome back</h2>
+        <p class="sub">Sign in to continue.</p>
+
+        <form class="form-wrap" id="login-form" novalidate>
+          <fieldset class="roles">
+            <legend class="visually-hidden">I am signing in as</legend>
+            <div class="roles-track">
+              <input type="radio" name="role" id="role-user" value="user" checked>
+              <label for="role-user">User</label>
+              <input type="radio" name="role" id="role-provider" value="provider">
+              <label for="role-provider">Healthcare provider</label>
+            </div>
+          </fieldset>
+
+          <div class="form">
+            <div class="field">
+              <label for="identity" id="identity-label">Email or mobile number</label>
+              <input class="input" id="identity" name="identity" type="text" inputmode="email"
+                     autocomplete="username" autocapitalize="none" spellcheck="false"
+                     placeholder="you@example.com or mobile" required>
+            </div>
+
+            <div class="field">
+              <div class="field-head">
+                <label for="password">Password</label>
+                <a href="#">Forgot password?</a>
+              </div>
+              <div class="input-wrap">
+                <input class="input" id="password" name="password" type="password"
+                       autocomplete="current-password" placeholder="Enter your password" required>
+                <button class="toggle-pass" type="button" id="toggle-pass" aria-controls="password" aria-pressed="false">Show</button>
+              </div>
+            </div>
+
+            <p class="form-note" id="form-note" role="status" hidden></p>
+
+            <button class="btn" type="submit" id="submit">Sign in</button>
+
+            <p class="alt"><span id="alt-text">New to Pulse?</span> <a href="#" id="alt-link">Create an account</a></p>
+          </div>
+        </form>
+      </section>
+
+      <ul class="points">
+        <li>
+          <span class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 4 12 2.5-6H21"/></svg>
+          </span>
+          <div><strong>Track better</strong><span>Log how you feel, sleep and move in a few taps a day.</span></div>
+        </li>
+        <li>
+          <span class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l1 2h3a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h3z"/><path d="M9 13l2 2 4-4"/></svg>
+          </span>
+          <div><strong>Consult smarter</strong><span>Share a clear summary with your doctor, only what you choose.</span></div>
+        </li>
+        <li>
+          <span class="icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-4.5-9.3-9A5.2 5.2 0 0 1 12 6.6 5.2 5.2 0 0 1 21.3 12C19 16.5 12 21 12 21z"/></svg>
+          </span>
+          <div><strong>Live healthier</strong><span>See how your habits and mood move together over time.</span></div>
+        </li>
+      </ul>
+    </main>
+
+    <footer class="site-footer">
+      <p>In an emergency, call 112.</p>
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      var roles = {
+        user: {
+          label: 'Email or mobile number', type: 'text', mode: 'email',
+          placeholder: 'you@example.com or mobile',
+          submit: 'Sign in', altText: 'New to Pulse?', altLink: 'Create an account'
+        },
+        provider: {
+          label: 'Work email', type: 'email', mode: 'email',
+          placeholder: 'doctor@clinic.com',
+          submit: 'Sign in as provider', altText: 'New to Pulse?', altLink: 'Register your practice'
+        }
+      };
+
+      var form = document.getElementById('login-form');
+      var identity = document.getElementById('identity');
+      var note = document.getElementById('form-note');
+      var pass = document.getElementById('password');
+      var toggle = document.getElementById('toggle-pass');
+
+      function applyRole(key) {
+        var r = roles[key];
+        document.getElementById('identity-label').textContent = r.label;
+        identity.type = r.type;
+        identity.setAttribute('inputmode', r.mode);
+        identity.placeholder = r.placeholder;
+        document.getElementById('submit').textContent = r.submit;
+        document.getElementById('alt-text').textContent = r.altText;
+        document.getElementById('alt-link').textContent = r.altLink;
+        note.hidden = true;
+      }
+
+      form.addEventListener('change', function (e) {
+        if (e.target.name === 'role') applyRole(e.target.value);
+      });
+
+      toggle.addEventListener('click', function () {
+        var show = pass.type === 'password';
+        pass.type = show ? 'text' : 'password';
+        toggle.textContent = show ? 'Hide' : 'Show';
+        toggle.setAttribute('aria-pressed', String(show));
+      });
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        if (!form.checkValidity()) { form.reportValidity(); return; }
+        // Static prototype: no backend yet.
+        note.textContent = 'Sign-in is not connected yet. This is the static prototype.';
+        note.hidden = false;
+      });
+    })();
+  </script>
+</body>
+</html>
