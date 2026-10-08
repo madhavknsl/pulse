@@ -95,6 +95,7 @@
 
   /* ---------- sharing model ---------- */
   var SHARE = [
+    { k: 'profile', label: 'Basic details & health background', sub: 'Name, age, sex, height, conditions, allergies, family history, diet and work. Never your phone or email.' },
     { k: 'mood', label: 'Mood, stress & questionnaires', sub: 'Daily mood, stress rating, PHQ-9 and GAD-7' },
     { k: 'sleep', label: 'Sleep, heart rate & SpO₂', sub: 'From your watch' },
     { k: 'activity', label: 'Steps & workouts', sub: '' },
@@ -115,7 +116,7 @@
     open: null, book: {}, consent: null,
     appts: [appt('iyer', 7, 17 * 60, 'In-person', 'PCOS follow-up'), appt('iyer', -21, 17 * 60 + 30, 'In-person', 'PCOS follow-up', 'done'), appt('rao', -68, 11 * 60, 'Video', 'Lab review', 'done')],
     resched: null, cancelAsk: null,
-    linked: { iyer: { share: { mood: true, sleep: true, activity: true, cycle: true, weight: true, meals: false, meds: true, labs: true }, expires: 'Until I stop it', since: addDays(today, -60) } },
+    linked: { iyer: { share: { profile: true, mood: true, sleep: true, activity: true, cycle: true, weight: true, meals: false, meds: true, labs: true }, expires: 'Until I stop it', since: addDays(today, -60) } },
     log: [
       { t: addDays(today, -3), text: 'Dr. Meera Iyer viewed your pre-visit summary' },
       { t: addDays(today, -20), text: 'Dr. Meera Iyer viewed your lab reports' },
@@ -541,7 +542,7 @@
     }
     else if ((x = t.closest('[data-ics]'))) { downloadIcs(state.appts.filter(function (q) { return q.id === +x.dataset.ics; })[0]); return; }
     else if (t.closest('[data-book-again]')) { state.book[d.id] = null; }
-    else if (t.closest('[data-link-open]')) { state.consent = { doc: d.id, share: { mood: true, sleep: true, activity: true, cycle: true, weight: false, meals: false, meds: false, labs: false }, expires: '90 days' }; }
+    else if (t.closest('[data-link-open]')) { state.consent = { doc: d.id, share: { profile: true, mood: true, sleep: true, activity: true, cycle: true, weight: false, meals: false, meds: false, labs: false }, expires: '90 days' }; }
     else if (t.closest('[data-link-cancel]')) { state.consent = null; }
     else if (t.closest('[data-link-ok]')) {
       state.linked[d.id] = { share: state.consent.share, expires: state.consent.expires, since: new Date() };

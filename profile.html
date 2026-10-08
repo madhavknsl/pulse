@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Pulse – Profile</title>
+  <meta name="theme-color" content="#2563eb">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%232563eb'/%3E%3Cpath d='M5 17h5l3-7 5 13 3-6h6' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="app-header">
+    <a class="brand" href="user.html" aria-label="Pulse home">
+      <svg viewBox="0 0 32 32" aria-hidden="true">
+        <rect width="32" height="32" rx="9" fill="#2563eb"/>
+        <path d="M5 17h5l3-7 5 13 3-6h6" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      PULSE
+    </a>
+
+    <details class="profile" id="profile">
+      <summary aria-label="Profile menu">
+        <span class="avatar" id="hdr-avatar" aria-hidden="true">AR</span>
+        <span class="pname" id="hdr-name">Ananya</span>
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </summary>
+      <div class="profile-menu">
+        <div class="who"><strong id="menu-name">Ananya R.</strong><span>Signed in as User</span></div>
+        <a href="profile.html" aria-current="page">View profile</a>
+        <a href="index.html">Sign out</a>
+      </div>
+    </details>
+  </header>
+
+  <main class="dash">
+
+    <!-- Hero -->
+    <section class="hero-card" aria-label="Your profile">
+      <div class="hero-banner" aria-hidden="true"></div>
+      <div class="hero-body">
+        <div class="hero-top">
+          <div class="av-wrap">
+            <div class="avatar-xl" id="av-big" role="img" aria-label="Profile picture"></div>
+            <button class="cam-btn" id="cam-btn" type="button" aria-label="Change profile picture">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l1.5-2h7L17 8h3a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13" r="3.5"/></svg>
+            </button>
+            <input class="visually-hidden" id="photo-in" type="file" accept="image/*" tabindex="-1" aria-hidden="true">
+          </div>
+          <div class="hero-name">
+            <h1 id="hero-name"></h1>
+            <p class="sub" id="hero-sub"></p>
+          </div>
+          <div class="hero-actions">
+            <button class="link-btn" id="photo-remove" type="button" hidden>Remove photo</button>
+          </div>
+        </div>
+        <p class="msg-line" id="photo-msg" role="status" style="margin-top:-6px"></p>
+        <div class="hero-chips" id="hero-chips"></div>
+        <div class="hero-stats" id="hero-stats"></div>
+      </div>
+    </section>
+
+    <!-- Section menu -->
+    <nav class="sec-nav" aria-label="Profile sections">
+      <a href="#personal">Personal</a><a href="#body">Body</a><a href="#health">Health background</a><a href="#baseline">Day-1 baseline</a>
+      <a href="#notifications">Notifications</a><a href="#devices">Devices</a><a href="#plan">Plan</a><a href="#care">Care team</a>
+    </nav>
+
+    <div class="pcols">
+
+      <!-- Personal details -->
+      <section class="card pcard" id="personal" aria-labelledby="t-personal">
+        <div class="pcard-head"><h2 id="t-personal">Personal details</h2><button class="btn-outline-sm" type="button" data-edit="personal">Edit</button></div>
+        <p class="vis" id="vis-personal"></p>
+        <div id="personal-body"></div>
+      </section>
+
+      <!-- Body -->
+      <section class="card pcard" id="body" aria-labelledby="t-body">
+        <div class="pcard-head"><h2 id="t-body">Body measurements</h2><button class="btn-outline-sm" type="button" data-edit="body">Edit height</button></div>
+        <p class="vis" id="vis-body"></p>
+        <div id="body-body"></div>
+      </section>
+
+      <!-- Health background -->
+      <section class="card pcard" id="health" aria-labelledby="t-health">
+        <div class="pcard-head"><h2 id="t-health">Health background</h2><button class="btn-outline-sm" type="button" data-edit="health">Edit</button></div>
+        <p class="vis" id="vis-health"></p>
+        <div id="health-body"></div>
+      </section>
+
+      <!-- Baseline -->
+      <section class="card pcard" id="baseline" aria-labelledby="t-baseline">
+        <div class="pcard-head"><h2 id="t-baseline">Day-1 baseline</h2></div>
+        <p class="vis" id="vis-baseline"></p>
+        <div id="baseline-body"></div>
+      </section>
+
+      <!-- Notifications -->
+      <section class="card pcard" id="notifications" aria-labelledby="t-notif">
+        <div class="pcard-head"><h2 id="t-notif">Notifications</h2></div>
+        <p class="vis" id="vis-notif"></p>
+        <div id="notif-body"></div>
+      </section>
+
+      <!-- Devices -->
+      <section class="card pcard" id="devices" aria-labelledby="t-dev">
+        <div class="pcard-head"><h2 id="t-dev">Connected devices</h2></div>
+        <p class="vis" id="vis-dev"></p>
+        <div id="dev-body"></div>
+      </section>
+
+      <!-- Plan -->
+      <section class="card pcard" id="plan" aria-labelledby="t-plan">
+        <div class="pcard-head"><h2 id="t-plan">Plan &amp; billing</h2></div>
+        <p class="vis" id="vis-plan"></p>
+        <div id="plan-body"></div>
+      </section>
+
+      <!-- Care team -->
+      <section class="card pcard" id="care" aria-labelledby="t-care">
+        <div class="pcard-head"><h2 id="t-care">Care team &amp; emergency contact</h2></div>
+        <p class="vis" id="vis-care"></p>
+        <div id="care-body"></div>
+      </section>
+
+    </div>
+  </main>
+
+  <script src="profile.js"></script>
+</body>
+</html>
