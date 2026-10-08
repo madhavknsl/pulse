@@ -70,7 +70,7 @@
 
             <button class="btn" type="submit" id="submit">Sign in</button>
 
-            <p class="alt"><span id="alt-text">New to Pulse?</span> <a href="#" id="alt-link">Create an account</a></p>
+            <p class="alt"><span id="alt-text">New to Pulse?</span> <a href="register.html" id="alt-link">Create an account</a></p>
           </div>
         </form>
       </section>
@@ -102,8 +102,10 @@
     </footer>
   </div>
 
+  <script src="js/pulse.js"></script>
   <script>
     (function () {
+      Pulse.publicPage = true;
       var roles = {
         user: {
           label: 'Email or mobile number', type: 'text', mode: 'email',
@@ -131,7 +133,9 @@
         identity.placeholder = r.placeholder;
         document.getElementById('submit').textContent = r.submit;
         document.getElementById('alt-text').textContent = r.altText;
-        document.getElementById('alt-link').textContent = r.altLink;
+        var alt = document.getElementById('alt-link');
+        alt.textContent = r.altLink;
+        alt.setAttribute('href', key === 'user' ? 'register.html' : '#');
         note.hidden = true;
       }
 
@@ -146,12 +150,37 @@
         toggle.setAttribute('aria-pressed', String(show));
       });
 
+      function say(text, isError) {
+        note.textContent = text;
+        note.classList.toggle('err', !!isError);
+        note.hidden = false;
+      }
+
+      var EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/, MOBILE = /^[6-9]\d{9}$/;
+
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         if (!form.checkValidity()) { form.reportValidity(); return; }
-        // Static prototype: no backend yet.
-        note.textContent = 'Sign-in is not connected yet. This is the static prototype.';
-        note.hidden = false;
+        var role = form.querySelector('input[name="role"]:checked').value;
+        var id = identity.value.trim();
+        var idOk = EMAIL.test(id) || (role === 'user' && MOBILE.test(id.replace(/\s/g, '')));
+        if (!idOk) {
+          say(role === 'user' ? 'Enter a valid email address or a 10-digit mobile number.' : 'Enter a valid work email address.', true);
+          return;
+        }
+        if (role === 'provider') {
+          say('The healthcare provider dashboard is coming soon. For now, sign in as a User.', false);
+          return;
+        }
+        var btn = document.getElementById('submit');
+        btn.disabled = true;
+        say('Signing you in…', false);
+        Pulse.post('/api/auth/login', { identity: id, password: pass.value }).then(function (res) {
+          window.location.href = res.next === 'home' ? 'user.html' : 'register.html';
+        }, function (err) {
+          btn.disabled = false;
+          say(err.message, true);
+        });
       });
     })();
   </script>

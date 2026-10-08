@@ -28,7 +28,7 @@
       <div class="profile-menu">
         <div class="who"><strong id="menu-name">Ananya R.</strong><span>Signed in as User</span></div>
         <a href="profile.html" aria-current="page">View profile</a>
-        <a href="index.html">Sign out</a>
+        <a href="index.html" data-signout>Sign out</a>
       </div>
     </details>
   </header>
@@ -64,7 +64,7 @@
     <!-- Section menu -->
     <nav class="sec-nav" aria-label="Profile sections">
       <a href="#personal">Personal</a><a href="#body">Body</a><a href="#health">Health background</a><a href="#baseline">Day-1 baseline</a>
-      <a href="#notifications">Notifications</a><a href="#devices">Devices</a><a href="#plan">Plan</a><a href="#care">Care team</a>
+      <a href="#notifications">Notifications</a><a href="#consents">Consents</a><a href="#devices">Devices</a><a href="#plan">Plan</a><a href="#care">Care team</a>
     </nav>
 
     <div class="pcols">
@@ -104,6 +104,13 @@
         <div id="notif-body"></div>
       </section>
 
+      <!-- Consents -->
+      <section class="card pcard" id="consents" aria-labelledby="t-cons">
+        <div class="pcard-head"><h2 id="t-cons">Your consents</h2></div>
+        <p class="vis" id="vis-cons"></p>
+        <div id="consents-body"></div>
+      </section>
+
       <!-- Devices -->
       <section class="card pcard" id="devices" aria-labelledby="t-dev">
         <div class="pcard-head"><h2 id="t-dev">Connected devices</h2></div>
@@ -128,6 +135,7 @@
     </div>
   </main>
 
+  <script src="js/pulse.js"></script>
   <script src="js/profile.js"></script>
 </body>
 </html>

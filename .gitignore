@@ -1,0 +1,6 @@
+# Local health data and runtime files: never commit these.
+data/
+__pycache__/
+*.pyc
+.DS_Store
+.env

@@ -33,7 +33,7 @@
       <div class="profile-menu">
         <div class="who"><strong>Ananya R.</strong><span>Signed in as User</span></div>
         <a href="profile.html">View profile</a>
-        <a href="index.html">Sign out</a>
+        <a href="index.html" data-signout>Sign out</a>
       </div>
     </details>
   </header>
@@ -126,7 +126,7 @@
         <div id="up-fields"></div>
         <div style="margin-top:16px"><button class="btn btn-inline" type="submit">Save report</button></div>
         <p class="msg-line" id="up-msg" role="status"></p>
-        <p class="fine">Typing in the numbers lets Pulse chart your trends. The file itself isn't stored in this prototype.</p>
+        <p class="fine">Typing in the numbers lets Pulse chart your trends. A file you add is stored only on this computer.</p>
       </form>
       <div class="card"><h2>Results and trends</h2>
         <p class="fine">Ranges are exactly as printed on your report. Pulse doesn't judge results. Your doctor does.</p>
@@ -180,11 +180,13 @@
           <button class="btn-danger-sm" type="button" id="data-delete">Delete my data</button>
         </div>
         <p class="msg-line" id="data-msg" role="status"></p>
+        <div id="data-confirm"></div>
       </div>
     </section>
 
   </main>
 
+  <script src="js/pulse.js"></script>
   <script src="js/healthcare.js"></script>
 </body>
 </html>

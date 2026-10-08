@@ -29,7 +29,7 @@
       <div class="profile-menu">
         <div class="who"><strong>Ananya R.</strong><span>Signed in as User</span></div>
         <a href="profile.html">View profile</a>
-        <a href="index.html">Sign out</a>
+        <a href="index.html" data-signout>Sign out</a>
       </div>
     </details>
   </header>
@@ -64,10 +64,12 @@
         <div class="chart-block">
           <div class="chart-head"><h3>Last 3 weeks</h3><span class="chg" id="chg-21"></span></div>
           <svg class="chart" id="chart-21" viewBox="0 0 640 220" role="img" aria-label="Health Factor, last 3 weeks"></svg>
+          <p class="empty chart-empty" id="empty-21" hidden>Not enough data yet. Check in each day and your trend will appear here.</p>
         </div>
         <div class="chart-block">
           <div class="chart-head"><h3>Last 90 days</h3><span class="chg" id="chg-90"></span></div>
           <svg class="chart" id="chart-90" viewBox="0 0 640 220" role="img" aria-label="Health Factor, last 90 days"></svg>
+          <p class="empty chart-empty" id="empty-90" hidden>Not enough data yet. Check in each day and your trend will appear here.</p>
         </div>
       </section>
 
@@ -203,169 +205,7 @@
 
   </main>
 
-  <script>
-    (function () {
-      /* ---------- profile menu: close on outside click / Escape ---------- */
-      var profile = document.getElementById('profile');
-      document.addEventListener('click', function (e) { if (!profile.contains(e.target)) profile.open = false; });
-      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') profile.open = false; });
-
-      /* ---------- Health Factor chart (sample data: 90 days) ---------- */
-      function rng(seed) {
-        return function () {
-          seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
-          var t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-        };
-      }
-      var rand = rng(6), data = [], i;
-      for (i = 0; i < 90; i++) {
-        data.push(Math.round(54 + 12.5 * (i / 89) + (rand() - 0.5) * 3 + Math.sin(i / 3.5)));
-      }
-
-      var big = document.getElementById('hf-big');
-      big.textContent = data[data.length - 1];
-
-      function ago(idx, n) { var d = n - 1 - idx; return d === 0 ? 'Today' : d + (d === 1 ? ' day ago' : ' days ago'); }
-
-      /* One chart per range. Each is drawn at its real pixel width so labels stay readable on phones. */
-      var CHARTS = [
-        { svg: document.getElementById('chart-21'), chg: document.getElementById('chg-21'), n: 21, span: '3 weeks',
-          ticks: [[0, '3 weeks ago'], [10, '10 days ago'], [20, 'Today']] },
-        { svg: document.getElementById('chart-90'), chg: document.getElementById('chg-90'), n: 90, span: '90 days',
-          ticks: [[0, '90 days ago'], [45, '45 days ago'], [89, 'Today']] }
-      ];
-
-      function drawChart(c) {
-        var svg = c.svg, n = c.n, PL = 34, PR = 14, PT = 14, PB = 30;
-        var W = Math.max(260, Math.round(svg.getBoundingClientRect().width) || 640);
-        var H = Math.max(170, Math.min(220, Math.round(W * 0.45)));
-        svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
-        var series = data.slice(-n);
-        var min = Math.min.apply(null, series), max = Math.max.apply(null, series);
-        var step = (max - min) > 18 ? 10 : 5;
-        var lo = Math.floor((min - 2) / step) * step, hi = Math.ceil((max + 2) / step) * step;
-        var px = function (k) { return PL + k * (W - PL - PR) / (n - 1); };
-        var py = function (v) { return PT + (hi - v) * (H - PT - PB) / (hi - lo); };
-        var xs = series.map(function (_, k) { return px(k); }), ys = series.map(py);
-
-        var out = '<defs><linearGradient id="hfFill-' + n + '" x1="0" y1="0" x2="0" y2="1">' +
-          '<stop offset="0" stop-color="#2563eb" stop-opacity=".22"/><stop offset="1" stop-color="#2563eb" stop-opacity="0"/></linearGradient></defs>';
-        for (var v = lo; v <= hi; v += step) {
-          out += '<line class="grid" x1="' + PL + '" x2="' + (W - PR) + '" y1="' + py(v) + '" y2="' + py(v) + '"/>' +
-                 '<text x="' + (PL - 8) + '" y="' + (py(v) + 4) + '" text-anchor="end">' + v + '</text>';
-        }
-        var line = series.map(function (_, k) { return (k ? 'L' : 'M') + xs[k].toFixed(1) + ' ' + ys[k].toFixed(1); }).join(' ');
-        out += '<path d="' + line + ' L' + xs[n - 1].toFixed(1) + ' ' + (H - PB) + ' L' + xs[0].toFixed(1) + ' ' + (H - PB) + ' Z" fill="url(#hfFill-' + n + ')"/>';
-        out += '<path class="line" d="' + line + '"/>';
-        c.ticks.forEach(function (tk, k) {
-          var anchor = k === 0 ? 'start' : (k === c.ticks.length - 1 ? 'end' : 'middle');
-          out += '<text x="' + xs[tk[0]].toFixed(1) + '" y="' + (H - 8) + '" text-anchor="' + anchor + '">' + tk[1] + '</text>';
-        });
-        out += '<circle class="dot" cx="' + xs[n - 1].toFixed(1) + '" cy="' + ys[n - 1].toFixed(1) + '" r="5"/>';
-        out += '<g class="hov" hidden><line class="hover-line" y1="' + PT + '" y2="' + (H - PB) + '"/>' +
-               '<circle class="dot" r="5"/><g class="tip"><rect class="tip-bg" rx="7" height="26"/><text class="tip-text" y="17" text-anchor="middle"></text></g></g>';
-        out += '<rect class="hit" x="' + PL + '" y="0" width="' + (W - PL - PR) + '" height="' + H + '" fill="transparent"/>';
-        svg.innerHTML = out;
-
-        var first = series[0], last = series[n - 1], diff = last - first;
-        c.chg.textContent = diff === 0 ? 'No change over the last ' + c.span : (diff > 0 ? '+' : '') + diff + ' over the last ' + c.span;
-        c.chg.classList.toggle('down', diff < 0);
-        svg.setAttribute('aria-label', 'Health Factor over the last ' + c.span + ': from ' + first + ' to ' + last + ' out of 100.');
-
-        var hit = svg.querySelector('.hit'), g = svg.querySelector('.hov');
-        var hl = g.querySelector('.hover-line'), dot = g.querySelector('circle');
-        var bg = g.querySelector('.tip rect'), tx = g.querySelector('.tip text');
-        function show(e) {
-          var r = svg.getBoundingClientRect();
-          var x = (e.clientX - r.left) / r.width * W;
-          var k = Math.max(0, Math.min(n - 1, Math.round((x - PL) / (W - PL - PR) * (n - 1))));
-          g.removeAttribute('hidden');
-          hl.setAttribute('x1', xs[k]); hl.setAttribute('x2', xs[k]);
-          dot.setAttribute('cx', xs[k]); dot.setAttribute('cy', ys[k]);
-          tx.textContent = series[k] + ' · ' + ago(k, n);
-          var w = tx.getComputedTextLength() + 20;
-          var left = Math.max(PL, Math.min(W - PR - w, xs[k] - w / 2));
-          bg.setAttribute('x', left); bg.setAttribute('y', Math.max(2, ys[k] - 40)); bg.setAttribute('width', w);
-          tx.setAttribute('x', left + w / 2); tx.setAttribute('y', Math.max(2, ys[k] - 40) + 17);
-        }
-        hit.addEventListener('pointermove', show);
-        hit.addEventListener('pointerdown', show);
-        hit.addEventListener('pointerleave', function () { g.setAttribute('hidden', ''); });
-      }
-
-      function renderCharts() { CHARTS.forEach(drawChart); }
-      renderCharts();
-      var resizeTimer;
-      window.addEventListener('resize', function () {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(renderCharts, 150);
-      });
-
-      /* ---------- 30-day check-in calendar (sample history; index 29 = today) ---------- */
-      var logRand = rng(21), logged = [];
-      for (i = 0; i < 29; i++) logged.push(logRand() > 0.2);
-      logged.push(false); // today: not checked in yet
-
-      function renderLog() {
-        var t = new Date(); t.setHours(0, 0, 0, 0);
-        var start = new Date(t); start.setDate(t.getDate() - 29);
-        var out = 'SMTWTFS'.split('').map(function (d) { return '<span class="dow" aria-hidden="true">' + d + '</span>'; }).join('');
-        for (var b = 0; b < start.getDay(); b++) out += '<span class="log-cell blank" aria-hidden="true"></span>';
-        var n = 0;
-        for (var k = 0; k < 30; k++) {
-          var d = new Date(start); d.setDate(start.getDate() + k);
-          if (logged[k]) n++;
-          var label = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-          out += '<span class="log-cell' + (logged[k] ? ' on' : '') + (k === 29 ? ' today' : '') + '" title="' +
-                 label + (k === 29 ? ' (today)' : '') + ': ' + (logged[k] ? 'checked in' : 'no check-in') + '">' + d.getDate() + '</span>';
-        }
-        document.getElementById('log-grid').innerHTML = out;
-        document.getElementById('log-count').textContent = n + ' of 30 days';
-      }
-      renderLog();
-
-      /* ---------- daily check-in (static: nothing is stored or sent) ---------- */
-      var moods = document.querySelectorAll('.mood');
-      var form = document.getElementById('say');
-      var ta = document.getElementById('day-text');
-      var note = document.getElementById('note');
-      var recap = document.getElementById('recap');
-      var support = document.getElementById('support');
-      var mood = 0;
-
-      moods.forEach(function (btn) {
-        btn.addEventListener('click', function () {
-          mood = Number(btn.dataset.value);
-          moods.forEach(function (b) { b.setAttribute('aria-pressed', String(b === btn)); });
-        });
-      });
-
-      function grow() { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 140) + 'px'; }
-      ta.addEventListener('input', grow);
-      ta.addEventListener('keydown', function (e) {
-        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); form.requestSubmit(); }
-      });
-
-      form.addEventListener('submit', function (e) {
-        e.preventDefault();
-        var text = ta.value.trim();
-        note.hidden = false;
-        if (!mood && !text) {
-          note.className = 'note err';
-          note.textContent = 'Pick how you feel or write a few words.';
-          return;
-        }
-        note.className = 'note';
-        note.textContent = 'Logged for today. Thanks for checking in.';
-        logged[29] = true; renderLog();
-        recap.hidden = !text;
-        recap.textContent = text ? 'You wrote: ' + text : '';
-        support.hidden = !(mood && mood <= 2); // low days get a way to reach a person
-        ta.value = ''; grow();
-      });
-    })();
-  </script>
+  <script src="js/pulse.js"></script>
+  <script src="js/home.js"></script>
 </body>
 </html>

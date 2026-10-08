@@ -1,5 +1,4 @@
-/* Pulse tracker — static prototype.
-   Everything here is SIMULATED demo data held in memory. Nothing is stored or sent anywhere. */
+/* Pulse tracker. Everything is read from, and saved to, the local server. */
 (function () {
   'use strict';
 
@@ -79,61 +78,55 @@
     $('#sidebar').innerHTML = h;
   })();
 
-  /* ---------- simulated data (30 days, oldest first; last item = today) ---------- */
-  function rng(seed) {
-    return function () {
-      seed |= 0; seed = (seed + 0x6D2B79F5) | 0;
-      var t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
-      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-    };
-  }
-  var rand = rng(11);
-  function g() { return (rand() + rand() + rand() - 1.5) / 0.75; }
+  /* ---------- data from the server (30 days, oldest first; the last item is today) ---------- */
+  var P = window.Pulse;
   var N = 30, STEP_GOAL = 7000, SLEEP_GOAL = 7;
-  var dates = [], steps = [], rhr = [], hrv = [], spo2 = [], spo2min = [], bedtime = [], sleepMin = [], i;
-  for (i = 0; i < N; i++) {
-    var d = addDays(today, i - (N - 1)), we = d.getDay() === 0 || d.getDay() === 6;
-    dates.push(d);
-    steps.push(Math.round((5600 + i * 25 + g() * 1100 + (we ? 900 : 0)) / 10) * 10);
-    rhr.push(Math.round(77 - i * 0.08 + g() * 1.6));
-    hrv.push(Math.round(40 + g() * 4));
-    spo2.push(Math.round((96 + g() * 0.5) * 10) / 10);
-    spo2min.push(Math.round(spo2[i] - 3.2 + g() * 0.8));
-    bedtime.push(Math.round(40 + g() * 45));              // minutes after midnight
-    sleepMin.push(Math.round((6.1 + i * 0.015 + g() * 0.6) * 60));
-  }
-  steps[N - 1] = 5320; rhr[N - 1] = 74;
+  var dates = [], steps = [], rhr = [], hrv = [], spo2 = [], spo2min = [], bedtime = [], sleepMin = [];
 
   var state = {
     ranges: { steps: 7, heart: 7, spo2: 7, sleep: 7 },
-    weights: [74.2, 74.0, 73.8, 73.9, 73.6, 73.4, 73.3, 73.1].map(function (kg, k) { return { date: addDays(today, -7 * (7 - k) - 2), kg: kg }; }),
-    waist: { cm: 86, date: addDays(today, -21) },
-    hideWeight: false,
-    workouts: [{ date: addDays(today, -5), type: 'Walk', min: 30 }, { date: addDays(today, -3), type: 'Strength', min: 45 }, { date: addDays(today, -1), type: 'Yoga', min: 30 }],
-    woType: null,
-    period: {},
-    calMonth: new Date(today.getFullYear(), today.getMonth(), 1),
-    selDate: null,
-    symSel: {}, tagSel: {},
-    symLog: [
-      { date: addDays(today, -1), syms: ['Fatigue', 'Bloating'], tags: ['Late meal', 'Deadline day'] },
-      { date: addDays(today, -3), syms: ['Acne'], tags: ['Ordered in'] },
-      { date: addDays(today, -6), syms: ['Pelvic pain', 'Headache'], tags: ['Poor sleep'] }
-    ],
-    meals: [{ type: 'Breakfast', time: '09:10', src: 'Home-cooked', text: 'Poha with peanuts' }, { type: 'Lunch', time: '14:15', src: 'Ordered in', text: 'Veg thali' }],
-    mealSrc: null,
-    meds: [
-      { name: 'Metformin', dose: '500 mg, after dinner', today: null, week: ['taken', 'taken', 'missed', 'taken', 'taken', 'taken'] },
-      { name: 'Inositol', dose: '2 g, morning', today: 'taken', week: ['taken', 'taken', 'taken', 'missed', 'taken', 'taken'] }
-    ],
-    stress: null,
-    qHistory: { phq9: [{ ago: 42, score: 14 }, { ago: 21, score: 12 }], gad7: [{ ago: 42, score: 11 }, { ago: 21, score: 10 }] }
+    weights: [], waist: null, goalWeight: null, hideWeight: false, ui: { hide_numbers: false, show_bmi: false },
+    workouts: [], woType: null,
+    period: {}, calMonth: new Date(today.getFullYear(), today.getMonth(), 1), selDate: null,
+    symSel: {}, tagSel: {}, symDirty: false, symLog: [],
+    weekMeals: [], meals: [], mealSrc: null,
+    meds: [], stress: null, qHistory: { phq9: [], gad7: [] },
+    device: { connected: false }, consents: {}, name: 'there'
   };
 
-  // Sample periods: starts 89, 48 and 12 days ago (cycles of 41 and 36 days)
-  [[-89, ['medium', 'heavy', 'heavy', 'medium', 'light']], [-48, ['light', 'medium', 'heavy', 'heavy', 'medium', 'spotting']], [-12, ['medium', 'heavy', 'medium', 'light', 'spotting']]]
-    .forEach(function (p) { p[1].forEach(function (f, k) { state.period[key(addDays(today, p[0] + k))] = f; }); });
+  function ingest(d) {
+    var days = d.daily;
+    N = days.length;
+    dates = days.map(function (r) { return parseKey(r.date); });
+    steps = days.map(function (r) { return r.steps; });
+    rhr = days.map(function (r) { return r.rhr; });
+    hrv = days.map(function (r) { return r.hrv; });
+    spo2 = days.map(function (r) { return r.spo2_avg; });
+    spo2min = days.map(function (r) { return r.spo2_min; });
+    bedtime = days.map(function (r) { return r.bed_min; });
+    sleepMin = days.map(function (r) { return r.sleep_min; });
+    STEP_GOAL = d.goals.steps || 7000; SLEEP_GOAL = d.goals.sleep_h || 7; state.goalWeight = d.goals.weight_kg;
+    state.weights = d.weights.map(function (w) { return { date: parseKey(w.date), kg: w.kg }; });
+    state.waist = d.waist ? { cm: d.waist.cm, date: parseKey(d.waist.date) } : null;
+    state.ui = d.ui; state.hideWeight = d.ui.hide_numbers;
+    state.workouts = d.workouts.map(function (w) { return { id: w.id, date: parseKey(w.date), type: w.type, min: w.min }; });
+    state.period = d.period;
+    state.symLog = d.symptom_logs.map(function (s) { return { date: parseKey(s.date), syms: s.syms, tags: s.tags }; });
+    var td = key(today), todayLog = d.symptom_logs.filter(function (s) { return s.date === td; })[0];
+    if (!state.symDirty) {   // don't wipe chips the person has ticked but not saved yet
+      state.symSel = {}; state.tagSel = {};
+      if (todayLog) { todayLog.syms.forEach(function (s) { state.symSel[s] = 1; }); todayLog.tags.forEach(function (s) { state.tagSel[s] = 1; }); }
+    }
+    state.weekMeals = d.meals;
+    state.meals = d.meals.filter(function (m) { return m.date === td; });
+    state.meds = d.meds;
+    state.stress = days[N - 1].stress || null;
+    state.qHistory = d.questionnaires;
+    state.device = d.device; state.consents = d.consents; state.name = d.user.preferred_name;
+  }
+  function refresh() {
+    return P.get('/api/tracker').then(function (d) { ingest(d); if (typeof current !== 'undefined' && RENDER[current]) RENDER[current](); });
+  }
 
   /* ---------- cycle maths ---------- */
   function periodStarts() {
@@ -162,7 +155,8 @@
     var W = Math.max(280, Math.round(svgEl.getBoundingClientRect().width) || 600);
     var H = Math.max(190, Math.min(250, Math.round(W * 0.42)));
     var PL = 40, PR = 12, PT = 14, PB = 28, vals = spec.values, n = vals.length, bars = spec.type === 'bars';
-    var all = vals.concat(spec.goal != null ? [spec.goal] : []);
+    var have = vals.filter(function (v) { return v != null; });
+    var all = have.concat(spec.goal != null ? [spec.goal] : []);
     var lo = spec.min != null ? spec.min : Math.min.apply(null, all);
     var hi = spec.max != null ? spec.max : Math.max.apply(null, all);
     if (spec.min == null || spec.max == null) {
@@ -179,6 +173,7 @@
     svgEl.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
     if (spec.aria) svgEl.setAttribute('aria-label', spec.aria);
 
+    var lastK = vals.length - 1; while (lastK > 0 && vals[lastK] == null) lastK--;
     var out = '<defs><linearGradient id="fill-' + svgEl.id + '" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2563eb" stop-opacity=".22"/><stop offset="1" stop-color="#2563eb" stop-opacity="0"/></linearGradient></defs>';
     var count = Math.round((hi - lo) / step), t, k;
     for (k = 0; k <= count; k++) {
@@ -189,14 +184,21 @@
     if (bars) {
       var bw = Math.min(40, (W - PL - PR) / n * 0.62);
       vals.forEach(function (v, j) {
+        if (v == null) return;
         var top = y(v);
         out += '<rect class="bar-r' + (j === n - 1 ? ' last' : '') + '" x="' + (x(j) - bw / 2).toFixed(1) + '" y="' + top.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + Math.max(0, y(lo) - top).toFixed(1) + '" rx="4"/>';
       });
     } else {
-      var line = vals.map(function (v, j) { return (j ? 'L' : 'M') + x(j).toFixed(1) + ' ' + y(v).toFixed(1); }).join(' ');
-      out += '<path d="' + line + ' L' + x(n - 1).toFixed(1) + ' ' + (H - PB) + ' L' + x(0).toFixed(1) + ' ' + (H - PB) + ' Z" fill="url(#fill-' + svgEl.id + ')"/>';
-      out += '<path class="line" d="' + line + '"/>';
-      out += '<circle class="dot" cx="' + x(n - 1).toFixed(1) + '" cy="' + y(vals[n - 1]).toFixed(1) + '" r="5"/>';
+      // each unbroken run of days is its own line, so a missing day stays a gap
+      var runs = [], cur = [];
+      vals.forEach(function (v, j) { if (v == null) { if (cur.length) runs.push(cur); cur = []; } else cur.push(j); });
+      if (cur.length) runs.push(cur);
+      runs.forEach(function (run) {
+        var line = run.map(function (j, q) { return (q ? 'L' : 'M') + x(j).toFixed(1) + ' ' + y(vals[j]).toFixed(1); }).join(' ');
+        if (run.length > 1) out += '<path d="' + line + ' L' + x(run[run.length - 1]).toFixed(1) + ' ' + (H - PB) + ' L' + x(run[0]).toFixed(1) + ' ' + (H - PB) + ' Z" fill="url(#fill-' + svgEl.id + ')"/>';
+        out += '<path class="line" d="' + line + '"/>';
+      });
+      out += '<circle class="dot" cx="' + x(lastK).toFixed(1) + '" cy="' + y(vals[lastK]).toFixed(1) + '" r="5"/>';
     }
     if (spec.goal != null) {
       out += '<line class="goal" x1="' + PL + '" x2="' + (W - PR) + '" y1="' + y(spec.goal).toFixed(1) + '" y2="' + y(spec.goal).toFixed(1) + '"/>' +
@@ -215,6 +217,7 @@
       var r = svgEl.getBoundingClientRect(), px = (e.clientX - r.left) / r.width * W;
       var j = bars ? Math.floor((px - PL) / ((W - PL - PR) / n)) : Math.round((px - PL) / ((W - PL - PR) / (n - 1 || 1)));
       j = Math.max(0, Math.min(n - 1, j));
+      if (vals[j] == null) { hov.setAttribute('hidden', ''); return; }
       var cx = x(j), cy = y(vals[j]);
       hov.removeAttribute('hidden');
       hl.setAttribute('x1', cx); hl.setAttribute('x2', cx); dot.setAttribute('cx', cx); dot.setAttribute('cy', cy);
@@ -227,6 +230,18 @@
     hit.addEventListener('pointerdown', show);
     hit.addEventListener('pointerleave', function () { hov.setAttribute('hidden', ''); });
   }
+
+  /* days with no reading are null: say so instead of drawing an empty chart */
+  function nums(a) { return a.filter(function (v) { return v != null; }); }
+  function avgN(a) { var x = nums(a); return x.length ? sum(x) / x.length : null; }
+  function chartOrEmpty(svgEl, ok, msg) {
+    var note = svgEl.nextElementSibling;
+    if (!note || !note.classList.contains('chart-empty')) { note = document.createElement('p'); note.className = 'empty chart-empty'; svgEl.parentNode.insertBefore(note, svgEl.nextSibling); }
+    if (ok) { svgEl.removeAttribute('hidden'); note.hidden = true; }
+    else { svgEl.setAttribute('hidden', ''); note.hidden = false; note.innerHTML = msg; }
+    return ok;
+  }
+  var NEED_WATCH = 'No readings yet. <a href="profile.html#devices">Connect the demo watch</a> in your profile to see this.';
 
   function labelsFor(n) {
     var out = [];
@@ -245,14 +260,14 @@
   RENDER.overview = function () {
     var taken = state.meds.filter(function (m) { return m.today === 'taken'; }).length;
     var wk = state.workouts.filter(function (w) { return daysBetween(w.date, today) <= 6; });
-    var starts = periodStarts(), cd = cycleDayOn(today), lastW = state.weights[state.weights.length - 1].kg;
-    var nSym = Object.keys(state.symSel).length;
+    var starts = periodStarts(), cd = cycleDayOn(today), lastW = state.weights.length ? state.weights[state.weights.length - 1].kg : null;
+    var nSym = Object.keys(state.symSel).length, last = N - 1;
     var T = [
-      { id: 'steps', icon: 'walk', label: 'Steps', val: num(steps[N - 1]), sub: 'of ' + num(STEP_GOAL) + ' goal' },
-      { id: 'heart', icon: 'heart', label: 'Resting heart rate', val: rhr[N - 1] + ' bpm', sub: 'HRV ' + hrv[N - 1] + ' ms' },
-      { id: 'spo2', icon: 'drop', label: 'SpO₂ last night', val: spo2[N - 1].toFixed(1) + '%', sub: 'Lowest ' + spo2min[N - 1] + '%' },
-      { id: 'sleep', icon: 'moon', label: 'Sleep', val: fmtDur(sleepMin[N - 1]), sub: 'Bed ' + fmtClock(bedtime[N - 1]) },
-      { id: 'weight', icon: 'scale', label: 'Weight', val: state.hideWeight ? '•••' : lastW.toFixed(1) + ' kg', sub: 'Weekly check-in' },
+      { id: 'steps', icon: 'walk', label: 'Steps', val: steps[last] == null ? '–' : num(steps[last]), sub: 'of ' + num(STEP_GOAL) + ' goal' },
+      { id: 'heart', icon: 'heart', label: 'Resting heart rate', val: rhr[last] == null ? '–' : rhr[last] + ' bpm', sub: hrv[last] == null ? 'No reading yet' : 'HRV ' + hrv[last] + ' ms' },
+      { id: 'spo2', icon: 'drop', label: 'SpO₂ last night', val: spo2[last] == null ? '–' : spo2[last].toFixed(1) + '%', sub: spo2min[last] == null ? 'No reading yet' : 'Lowest ' + spo2min[last] + '%' },
+      { id: 'sleep', icon: 'moon', label: 'Sleep', val: sleepMin[last] == null ? '–' : fmtDur(sleepMin[last]), sub: bedtime[last] == null ? 'Not logged yet' : 'Bed ' + fmtClock(bedtime[last]) },
+      { id: 'weight', icon: 'scale', label: 'Weight', val: lastW == null ? '–' : (state.hideWeight ? '•••' : lastW.toFixed(1) + ' kg'), sub: 'Weekly check-in' },
       { id: 'workouts', icon: 'dumbbell', label: 'Workouts', val: wk.length + ' this week', sub: sum(wk.map(function (w) { return w.min; })) + ' minutes' },
       { id: 'cycle', icon: 'calendar', label: 'Cycle', val: cd ? 'Day ' + cd : '–', sub: starts.length ? 'Last period ' + fmtDate(starts[starts.length - 1]) : 'No period logged' },
       { id: 'symptoms', icon: 'tag', label: 'Symptoms', val: nSym ? nSym + ' selected' : 'None today', sub: 'Tap to log' },
@@ -264,69 +279,88 @@
     $('#tiles').innerHTML = T.map(function (t) {
       return '<a class="tile" href="#' + t.id + '"><span class="t-head">' + svg(t.icon) + esc(t.label) + '</span><span class="t-val">' + esc(t.val) + '</span><span class="t-sub">' + esc(t.sub) + '</span></a>';
     }).join('');
+    var chip = document.querySelector('#view-overview .sync-chip');
+    if (chip) chip.innerHTML = state.device.connected ? '<i></i>Demo watch connected · readings are simulated' : '<i style="background:#9fb0cc"></i>No watch connected';
   };
 
   RENDER.steps = function () {
-    var n = state.ranges.steps, v = steps[N - 1], last = steps.slice(-n);
-    $('#steps-big').textContent = num(v);
+    var n = state.ranges.steps, v = steps[N - 1], last = steps.slice(-n), got = nums(last);
+    $('#steps-big').textContent = v == null ? '–' : num(v);
     $('#steps-goal').textContent = 'of ' + num(STEP_GOAL) + ' goal so far today';
-    $('#steps-bar').style.width = Math.min(100, v / STEP_GOAL * 100) + '%';
-    $('#steps-stats').innerHTML =
-      stat('Average', num(Math.round(avg(last))), 'a day', 'Last ' + n + ' days') +
-      stat('Best day', num(Math.max.apply(null, last)), '', 'Last ' + n + ' days') +
-      stat('Days at goal', last.filter(function (s) { return s >= STEP_GOAL; }).length + ' of ' + n, '', num(STEP_GOAL) + '+ steps');
-    draw($('#chart-steps'), { type: 'bars', values: last, labels: labelsFor(n), goal: STEP_GOAL, goalLabel: 'Goal ' + num(STEP_GOAL), min: 0,
-      aria: 'Daily steps for the last ' + n + ' days', tip: function (j) { return dayText(j, n) + ' · ' + num(last[j]) + ' steps'; } });
+    $('#steps-bar').style.width = v == null ? '0%' : Math.min(100, v / STEP_GOAL * 100) + '%';
+    $('#steps-stats').innerHTML = got.length ?
+      stat('Average', num(Math.round(avgN(last))), 'a day', 'Last ' + n + ' days') +
+      stat('Best day', num(Math.max.apply(null, got)), '', 'Last ' + n + ' days') +
+      stat('Days at goal', got.filter(function (s) { return s >= STEP_GOAL; }).length + ' of ' + got.length, '', num(STEP_GOAL) + '+ steps') : '';
+    if (chartOrEmpty($('#chart-steps'), got.length > 0, NEED_WATCH)) {
+      draw($('#chart-steps'), { type: 'bars', values: last, labels: labelsFor(n), goal: STEP_GOAL, goalLabel: 'Goal ' + num(STEP_GOAL), min: 0,
+        aria: 'Daily steps for the last ' + n + ' days', tip: function (j) { return dayText(j, n) + ' · ' + num(last[j]) + ' steps'; } });
+    }
   };
 
   RENDER.heart = function () {
-    var n = state.ranges.heart, last = rhr.slice(-n);
-    $('#hr-big').textContent = rhr[N - 1];
-    $('#hr-stats').innerHTML =
-      stat('Average', Math.round(avg(last)), 'bpm', 'Last ' + n + ' days') +
-      stat('Lowest', Math.min.apply(null, last), 'bpm', 'Last ' + n + ' days') +
-      stat('HRV last night', hrv[N - 1], 'ms', 'Beat-to-beat variation');
-    draw($('#chart-hr'), { type: 'line', values: last, labels: labelsFor(n), aria: 'Resting heart rate for the last ' + n + ' days',
-      tip: function (j) { return dayText(j, n) + ' · ' + last[j] + ' bpm'; } });
+    var n = state.ranges.heart, last = rhr.slice(-n), got = nums(last);
+    $('#hr-big').textContent = rhr[N - 1] == null ? '–' : rhr[N - 1];
+    $('#hr-stats').innerHTML = got.length ?
+      stat('Average', Math.round(avgN(last)), 'bpm', 'Last ' + n + ' days') +
+      stat('Lowest', Math.min.apply(null, got), 'bpm', 'Last ' + n + ' days') +
+      stat('HRV last night', hrv[N - 1] == null ? '–' : hrv[N - 1], hrv[N - 1] == null ? '' : 'ms', 'Beat-to-beat variation') : '';
+    if (chartOrEmpty($('#chart-hr'), got.length > 0, NEED_WATCH)) {
+      draw($('#chart-hr'), { type: 'line', values: last, labels: labelsFor(n), aria: 'Resting heart rate for the last ' + n + ' days',
+        tip: function (j) { return dayText(j, n) + ' · ' + last[j] + ' bpm'; } });
+    }
   };
 
   RENDER.spo2 = function () {
-    var n = state.ranges.spo2, last = spo2.slice(-n);
-    $('#spo-big').textContent = spo2[N - 1].toFixed(1);
-    $('#spo-stats').innerHTML =
-      stat('Average', avg(last).toFixed(1), '%', 'Last ' + n + ' nights') +
-      stat('Lowest reading', Math.min.apply(null, spo2min.slice(-n)), '%', 'Last ' + n + ' nights') +
-      stat('Last night low', spo2min[N - 1], '%', 'Overnight minimum');
-    draw($('#chart-spo'), { type: 'line', values: last, labels: labelsFor(n), min: 90, max: 100, step: 2, aria: 'Nightly average SpO2 for the last ' + n + ' nights',
-      tip: function (j) { return dayText(j, n) + ' · ' + last[j].toFixed(1) + '%'; } });
+    var n = state.ranges.spo2, last = spo2.slice(-n), got = nums(last), lows = nums(spo2min.slice(-n));
+    $('#spo-big').textContent = spo2[N - 1] == null ? '–' : spo2[N - 1].toFixed(1);
+    $('#spo-stats').innerHTML = got.length ?
+      stat('Average', avgN(last).toFixed(1), '%', 'Last ' + n + ' nights') +
+      stat('Lowest reading', lows.length ? Math.min.apply(null, lows) : '–', lows.length ? '%' : '', 'Last ' + n + ' nights') +
+      stat('Last night low', spo2min[N - 1] == null ? '–' : spo2min[N - 1], spo2min[N - 1] == null ? '' : '%', 'Overnight minimum') : '';
+    if (chartOrEmpty($('#chart-spo'), got.length > 0, NEED_WATCH)) {
+      draw($('#chart-spo'), { type: 'line', values: last, labels: labelsFor(n), min: 90, max: 100, step: 2, aria: 'Nightly average SpO2 for the last ' + n + ' nights',
+        tip: function (j) { return dayText(j, n) + ' · ' + last[j].toFixed(1) + '%'; } });
+    }
   };
 
   RENDER.sleep = function () {
-    var n = state.ranges.sleep, hours = sleepMin.slice(-n).map(function (m) { return Math.round(m / 6) / 10; });
-    var week = bedtime.slice(-7), spread = Math.max.apply(null, week) - Math.min.apply(null, week);
-    $('#sleep-big').textContent = fmtDur(sleepMin[N - 1]);
-    $('#sleep-stats').innerHTML =
-      stat('Went to bed', fmtClock(bedtime[N - 1])) +
-      stat('Woke up', fmtClock(bedtime[N - 1] + sleepMin[N - 1])) +
-      stat('Average', fmtDur(avg(sleepMin.slice(-n))), '', 'Last ' + n + ' nights') +
-      stat('Bedtime varied by', fmtDur(spread), '', 'Last 7 nights');
-    draw($('#chart-sleep'), { type: 'bars', values: hours, labels: labelsFor(n), goal: SLEEP_GOAL, goalLabel: SLEEP_GOAL + ' h goal', min: 0, max: 10, step: 2,
-      aria: 'Hours slept for the last ' + n + ' nights', tip: function (j) { return dayText(j, n) + ' · ' + hours[j] + ' h'; } });
+    var n = state.ranges.sleep, mins = sleepMin.slice(-n), got = nums(mins), hours = mins.map(function (m) { return m == null ? null : Math.round(m / 6) / 10; });
+    var weekBeds = nums(bedtime.slice(-7)), spread = weekBeds.length > 1 ? Math.max.apply(null, weekBeds) - Math.min.apply(null, weekBeds) : null;
+    var last = N - 1;
+    $('#sleep-big').textContent = sleepMin[last] == null ? '–' : fmtDur(sleepMin[last]);
+    $('#sleep-stats').innerHTML = got.length ?
+      stat('Went to bed', bedtime[last] == null ? '–' : fmtClock(bedtime[last])) +
+      stat('Woke up', sleepMin[last] == null || bedtime[last] == null ? '–' : fmtClock(bedtime[last] + sleepMin[last])) +
+      stat('Average', fmtDur(avgN(mins)), '', 'Last ' + n + ' nights') +
+      stat('Bedtime varied by', spread == null ? '–' : fmtDur(spread), '', 'Last 7 nights') : '';
+    if (chartOrEmpty($('#chart-sleep'), got.length > 0, 'No sleep logged yet. Add last night below, or <a href="profile.html#devices">connect the demo watch</a>.')) {
+      draw($('#chart-sleep'), { type: 'bars', values: hours, labels: labelsFor(n), goal: SLEEP_GOAL, goalLabel: SLEEP_GOAL + ' h goal', min: 0, max: 10, step: 2,
+        aria: 'Hours slept for the last ' + n + ' nights', tip: function (j) { return dayText(j, n) + ' · ' + hours[j] + ' h'; } });
+    }
   };
 
   RENDER.weight = function () {
-    var w = state.weights, cur = w[w.length - 1], first = w[0], hide = state.hideWeight, diff = Math.round((cur.kg - first.kg) * 10) / 10;
+    var w = state.weights, hide = state.hideWeight;
     $('#hide-weight').checked = hide;
+    if (!w.length) {
+      $('#weight-card').innerHTML = '<p class="muted">No weight logged yet. Add it below.</p>';
+      $('#weight-chart-card').hidden = true;
+      return;
+    }
+    var cur = w[w.length - 1], first = w[0], diff = Math.round((cur.kg - first.kg) * 10) / 10;
     $('#weight-card').innerHTML =
       '<div class="big-line"><span class="big">' + (hide ? '•••' : cur.kg.toFixed(1)) + '</span><span class="muted">' + (hide ? 'numbers hidden' : 'kg · logged ' + fmtDate(cur.date)) + '</span></div>' +
       '<div class="stats" style="margin-top:14px">' +
-      stat('Goal', hide ? '•••' : '72', hide ? '' : 'kg') +
+      stat('Goal', hide ? '•••' : (state.goalWeight == null ? '–' : state.goalWeight), hide || state.goalWeight == null ? '' : 'kg') +
       stat('Since ' + fmtDate(first.date), hide ? '•••' : (diff > 0 ? '+' : '') + diff, hide ? '' : 'kg') +
-      stat('Waist', hide ? '•••' : state.waist.cm, hide ? '' : 'cm', 'Logged ' + fmtDate(state.waist.date)) + '</div>';
+      stat('Waist', hide ? '•••' : (state.waist ? state.waist.cm : '–'), hide || !state.waist ? '' : 'cm', state.waist ? 'Logged ' + fmtDate(state.waist.date) : 'Not logged yet') + '</div>';
     $('#weight-chart-card').hidden = hide;
     if (!hide) {
-      draw($('#chart-weight'), { type: 'line', values: w.map(function (p) { return p.kg; }), labels: w.map(function (p) { return fmtDate(p.date); }),
-        aria: 'Weekly weight over the last ' + w.length + ' weeks', tip: function (j) { return fmtDate(w[j].date) + ' · ' + w[j].kg.toFixed(1) + ' kg'; } });
+      if (chartOrEmpty($('#chart-weight'), w.length > 1, 'Log your weight again to see a trend.')) {
+        draw($('#chart-weight'), { type: 'line', values: w.map(function (p) { return p.kg; }), labels: w.map(function (p) { return fmtDate(p.date); }),
+          aria: 'Weekly weight over the last ' + w.length + ' weigh-ins', tip: function (j) { return fmtDate(w[j].date) + ' · ' + w[j].kg.toFixed(1) + ' kg'; } });
+      }
     }
   };
 
@@ -339,9 +373,9 @@
       stat('Total', sum(wk.map(function (w) { return w.min; })), 'min', 'Last 7 days') +
       stat('Types', Object.keys(wk.reduce(function (o, w) { o[w.type] = 1; return o; }, {})).length, '', 'Variety this week');
     $('#wo-types').innerHTML = WO_TYPES.map(function (t) { return '<button type="button" class="chip-btn" data-t="' + t + '" aria-pressed="' + (state.woType === t) + '">' + t + '</button>'; }).join('');
-    $('#wo-list').innerHTML = wk.length ? wk.map(function (w, k) {
+    $('#wo-list').innerHTML = wk.length ? wk.map(function (w) {
       return '<div class="row-item"><div class="grow"><strong>' + esc(w.type) + '</strong><span class="meta">' + fmtLong(w.date) + '</span></div><span class="pill">' + w.min + ' min</span>' +
-             '<button class="x-btn" type="button" data-del="' + state.workouts.indexOf(w) + '" aria-label="Remove ' + esc(w.type) + ' workout">×</button></div>';
+             '<button class="x-btn" type="button" data-del="' + w.id + '" aria-label="Remove ' + esc(w.type) + ' workout">×</button></div>';
     }).join('') : '<p class="muted">Nothing logged this week yet.</p>';
     draw($('#chart-wo'), { type: 'bars', values: perDay, labels: labelsFor(7), min: 0, aria: 'Workout minutes per day this week',
       tip: function (k) { return dayText(k, 7) + ' · ' + perDay[k] + ' min'; } });
@@ -395,18 +429,18 @@
   var SRC = ['Home-cooked', 'Ordered in', 'Eaten out', 'Skipped'];
   var QUICK = ['Poha', 'Idli-sambar', 'Dal-chawal', 'Roti-sabzi', 'Paratha', 'Dosa', 'Biryani', 'Khichdi', 'Fruit', 'Salad', 'Sandwich'];
   RENDER.meals = function () {
-    var ordered = 5 + state.meals.filter(function (m) { return m.src === 'Ordered in'; }).length;
-    var total = 15 + state.meals.length;
-    var late = 3 + state.meals.filter(function (m) { return m.type === 'Dinner' && m.time >= '22:00'; }).length;
-    var skipped = 2 + state.meals.filter(function (m) { return m.src === 'Skipped'; }).length;
-    $('#meal-stats').innerHTML = stat('Ordered in', ordered + ' of ' + total, '', 'Meals, last 7 days') + stat('Dinners after 10 pm', late, '', 'Last 7 days') + stat('Skipped', skipped, 'meals', 'Last 7 days');
+    var wm = state.weekMeals;
+    var ordered = wm.filter(function (m) { return m.src === 'Ordered in'; }).length;
+    var late = wm.filter(function (m) { return m.type === 'Dinner' && m.time >= '22:00'; }).length;
+    var skipped = wm.filter(function (m) { return m.src === 'Skipped'; }).length;
+    $('#meal-stats').innerHTML = stat('Ordered in', ordered + ' of ' + wm.length, '', 'Meals, last 7 days') + stat('Dinners after 10 pm', late, '', 'Last 7 days') + stat('Skipped', skipped, 'meals', 'Last 7 days');
     $('#meal-src').innerHTML = SRC.map(function (s) { return '<button type="button" class="chip-btn" data-src="' + s + '" aria-pressed="' + (state.mealSrc === s) + '">' + s + '</button>'; }).join('');
     $('#meal-quick').innerHTML = QUICK.map(function (q) { return '<button type="button" class="chip-btn" data-q="' + esc(q) + '">+ ' + esc(q) + '</button>'; }).join('');
     if (!$('#meal-time').value) $('#meal-time').value = nowHHMM();
     var meals = state.meals.slice().sort(function (a, b) { return a.time < b.time ? -1 : 1; });
     $('#meal-list').innerHTML = meals.length ? meals.map(function (m) {
       return '<div class="row-item"><div class="grow"><strong>' + esc(m.type) + ' · ' + fmtClock(+m.time.slice(0, 2) * 60 + +m.time.slice(3)) + '</strong><span class="meta">' + esc(m.src) + (m.text ? ' · ' + esc(m.text) : '') + '</span></div>' +
-             '<button class="x-btn" type="button" data-del="' + state.meals.indexOf(m) + '" aria-label="Remove ' + esc(m.type) + '">×</button></div>';
+             '<button class="x-btn" type="button" data-del="' + m.id + '" aria-label="Remove ' + esc(m.type) + '">×</button></div>';
     }).join('') : '<p class="muted">Nothing logged yet today.</p>';
   };
 
@@ -418,23 +452,13 @@
         '<div class="dots" style="margin-top:8px" role="img" aria-label="Last 7 days">' + dots + '</div></div>' +
         '<div class="seg" role="group" aria-label="Today for ' + esc(m.name) + '"><button type="button" data-med="' + k + '" data-v="taken" aria-pressed="' + (m.today === 'taken') + '">Taken</button>' +
         '<button type="button" data-med="' + k + '" data-v="missed" aria-pressed="' + (m.today === 'missed') + '">Missed</button></div>' +
-        '<button class="x-btn" type="button" data-del="' + k + '" aria-label="Remove ' + esc(m.name) + '">×</button></div>';
+        '<button class="x-btn" type="button" data-del="' + m.id + '" aria-label="Remove ' + esc(m.name) + '">×</button></div>';
     }).join('') : '<p class="muted">Nothing added yet.</p>';
   };
 
   /* stress & anxiety */
   var STRESS = ['Calm', 'Mild', 'Moderate', 'High', 'Overwhelmed'];
-  var FREQ = ['Not at all', 'Several days', 'More than half the days', 'Nearly every day'];
-  var QS = {
-    phq9: { name: 'PHQ-9', max: 27, items: [
-      'Little interest or pleasure in doing things', 'Feeling down, depressed, or hopeless', 'Trouble falling or staying asleep, or sleeping too much',
-      'Feeling tired or having little energy', 'Poor appetite or overeating', 'Feeling bad about yourself, or that you are a failure or have let yourself or your family down',
-      'Trouble concentrating on things, such as reading or watching TV', 'Moving or speaking so slowly that other people noticed, or being so restless that you move around a lot more than usual',
-      'Thoughts that you would be better off dead, or of hurting yourself in some way'] },
-    gad7: { name: 'GAD-7', max: 21, items: [
-      'Feeling nervous, anxious, or on edge', 'Not being able to stop or control worrying', 'Worrying too much about different things', 'Trouble relaxing',
-      'Being so restless that it is hard to sit still', 'Becoming easily annoyed or irritable', 'Feeling afraid, as if something awful might happen'] }
-  };
+  var FREQ = P.FREQ, QS = P.QUESTIONNAIRES;
   var run = null;
 
   RENDER.stress = function () {
@@ -442,9 +466,9 @@
     $('#stress-home').hidden = false; $('#q-run').hidden = true;
     $('#stress-chips').innerHTML = STRESS.map(function (s, k) { return '<button type="button" class="chip-btn" data-s="' + (k + 1) + '" aria-pressed="' + (state.stress === k + 1) + '">' + s + '</button>'; }).join('');
     $('#q-list').innerHTML = Object.keys(QS).map(function (qk) {
-      var h = state.qHistory[qk], lastR = h[h.length - 1], due = lastR.ago >= 14;
+      var h = state.qHistory[qk], lastR = h.length ? h[h.length - 1] : null, due = !lastR || lastR.ago >= 14;
       return '<div class="row-item"><div class="grow"><strong>' + QS[qk].name + '</strong><span class="meta">' +
-        (lastR.ago === 0 ? 'Done today' : 'Last: ' + lastR.score + ' of ' + QS[qk].max + ', ' + lastR.ago + ' days ago') + ' · ' + QS[qk].items.length + ' questions</span></div>' +
+        (!lastR ? 'Not taken yet' : lastR.ago === 0 ? 'Done today: ' + lastR.score + ' of ' + QS[qk].max : 'Last: ' + lastR.score + ' of ' + QS[qk].max + ', ' + lastR.ago + ' days ago') + ' · ' + QS[qk].items.length + ' questions</span></div>' +
         (due ? '<span class="pill">Due</span>' : '') + '<button class="btn btn-inline" type="button" data-q="' + qk + '" style="min-height:42px">Start</button></div>';
     }).join('');
   };
@@ -459,9 +483,10 @@
         '<div class="bar" style="margin-top:12px"><i style="width:' + (run.i / n * 100) + '%"></i></div>' +
         '<p class="q-prompt"><span class="muted" style="font-weight:600;font-size:.9375rem;display:block;margin-bottom:4px">Over the last 2 weeks, how often have you been bothered by:</span>' + esc(q.items[run.i]) + '</p>' +
         '<div class="opt-list">' + FREQ.map(function (f, k) { return '<button type="button" class="opt" data-a="' + k + '" aria-pressed="' + (run.answers[run.i] === k) + '">' + f + '</button>'; }).join('') + '</div>' +
-        (run.i > 0 ? '<div style="margin-top:14px"><button class="btn-ghost" type="button" id="q-back">Back</button></div>' : '');
+        (run.i > 0 ? '<div style="margin-top:14px"><button class="btn-ghost" type="button" id="q-back">Back</button></div>' : '') +
+        '<p class="msg-line" id="q-msg" role="status"></p>';
     } else {
-      var score = sum(run.answers), flagged = run.key === 'phq9' && run.answers[8] > 0;
+      var score = run.score, flagged = !!run.safety;
       box.innerHTML =
         '<h2>' + q.name + ' done</h2><div class="score-box"><div class="big">' + score + ' <span class="muted" style="font-size:1rem;font-weight:600">of ' + q.max + '</span></div>' +
         '<p class="fine" style="margin-top:6px">This is a screening score, not a diagnosis. Share it with your doctor.</p></div>' +
@@ -534,7 +559,7 @@
   function startChat() {
     chat.used = {}; chat.busy = false;
     msgsEl().innerHTML = '';
-    addMsg('bot', 'Hi Ananya. This is a quiet space to think out loud. I will only ask questions, and I cannot give advice. What is on your mind?');
+    addMsg('bot', 'Hi ' + state.name + '. This is a quiet space to think out loud. I will only ask questions, and I cannot give advice. What is on your mind?');
     var s = document.createElement('div'); s.className = 'starters'; s.id = 'starters';
     s.innerHTML = STARTERS.map(function (t) { return '<button type="button" class="chip-btn" data-start="' + esc(t) + '">' + esc(t) + '</button>'; }).join('');
     msgsEl().appendChild(s);
@@ -581,7 +606,10 @@
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { profile.open = false; closeDrawer(); } });
   var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { if (!(current === 'journal')) RENDER[current](); }, 150); });
 
-  /* ---------- interactions ---------- */
+  /* ---------- interactions: each change is saved to the server, then the page reloads its data ---------- */
+  function saved(sel, text) { return function () { return refresh().then(function () { if (sel) setMsg(sel, text); }); }; }
+  function failed(sel) { return function (e) { setMsg(sel, e.message, true); }; }
+
   $$('.seg[data-for]').forEach(function (seg) {
     seg.addEventListener('click', function (e) {
       var b = e.target.closest('button'); if (!b) return;
@@ -595,30 +623,22 @@
     e.preventDefault();
     var bed = $('#bed').value, wake = $('#wake').value;
     if (!bed || !wake) return setMsg('#sleep-msg', 'Add both times.', true);
-    var b = +bed.slice(0, 2) * 60 + +bed.slice(3), w = +wake.slice(0, 2) * 60 + +wake.slice(3), dur = (w - b + 1440) % 1440;
-    if (dur === 0) return setMsg('#sleep-msg', 'Bedtime and wake time can not be the same.', true);
-    bedtime[N - 1] = b >= 18 * 60 ? b - 1440 : b; sleepMin[N - 1] = dur;
-    setMsg('#sleep-msg', 'Saved: ' + fmtDur(dur) + ' of sleep.');
-    RENDER.sleep();
+    P.post('/api/tracker/sleep', { bed: bed, wake: wake }).then(function (r) {
+      return refresh().then(function () { setMsg('#sleep-msg', 'Saved: ' + fmtDur(r.sleep_min) + ' of sleep.'); });
+    }, failed('#sleep-msg'));
   });
 
-  $('#hide-weight').addEventListener('change', function () { state.hideWeight = this.checked; RENDER.weight(); });
+  $('#hide-weight').addEventListener('change', function () {
+    state.hideWeight = this.checked; state.ui.hide_numbers = this.checked; RENDER.weight();
+    P.put('/api/settings/ui', { hide_numbers: state.ui.hide_numbers, show_bmi: state.ui.show_bmi }).catch(function () {});
+  });
   $('#weight-form').addEventListener('submit', function (e) {
     e.preventDefault();
-    var kg = parseFloat($('#w-kg').value), cm = parseFloat($('#w-waist').value), did = [];
+    var kg = parseFloat($('#w-kg').value), cm = parseFloat($('#w-waist').value), body = {}, did = [];
     if (isNaN(kg) && isNaN(cm)) return setMsg('#weight-msg', 'Enter a weight or a waist measurement.', true);
-    if (!isNaN(kg)) {
-      if (kg < 30 || kg > 250) return setMsg('#weight-msg', 'That weight looks off. Check the number.', true);
-      var lastW = state.weights[state.weights.length - 1];
-      if (key(lastW.date) === key(today)) lastW.kg = kg; else state.weights.push({ date: today, kg: kg });
-      did.push('weight');
-    }
-    if (!isNaN(cm)) {
-      if (cm < 40 || cm > 200) return setMsg('#weight-msg', 'That waist measurement looks off.', true);
-      state.waist = { cm: cm, date: today }; did.push('waist');
-    }
-    $('#w-kg').value = ''; $('#w-waist').value = '';
-    RENDER.weight(); setMsg('#weight-msg', 'Saved ' + did.join(' and ') + '.');
+    if (!isNaN(kg)) { body.kg = kg; did.push('weight'); }
+    if (!isNaN(cm)) { body.waist = cm; did.push('waist'); }
+    P.post('/api/tracker/weight', body).then(function () { $('#w-kg').value = ''; $('#w-waist').value = ''; return saved('#weight-msg', 'Saved ' + did.join(' and ') + '.')(); }, failed('#weight-msg'));
   });
 
   $('#wo-types').addEventListener('click', function (e) {
@@ -631,12 +651,11 @@
     var min = parseInt($('#wo-min').value, 10);
     if (!state.woType) return setMsg('#wo-msg', 'Pick a workout type.', true);
     if (!(min >= 1 && min <= 600)) return setMsg('#wo-msg', 'Enter minutes between 1 and 600.', true);
-    state.workouts.push({ date: today, type: state.woType, min: min });
-    $('#wo-min').value = ''; state.woType = null; RENDER.workouts(); setMsg('#wo-msg', 'Workout added.');
+    P.post('/api/tracker/workouts', { type: state.woType, minutes: min }).then(function () { $('#wo-min').value = ''; state.woType = null; return saved('#wo-msg', 'Workout added.')(); }, failed('#wo-msg'));
   });
   $('#wo-list').addEventListener('click', function (e) {
     var b = e.target.closest('[data-del]'); if (!b) return;
-    state.workouts.splice(+b.dataset.del, 1); RENDER.workouts();
+    P.del('/api/tracker/workouts/' + b.dataset.del).then(saved(), failed('#wo-msg'));
   });
 
   $('#cal-prev').addEventListener('click', function () { state.calMonth = new Date(state.calMonth.getFullYear(), state.calMonth.getMonth() - 1, 1); RENDER.cycle(); });
@@ -647,23 +666,20 @@
   });
   $('#ds-chips').addEventListener('click', function (e) {
     var b = e.target.closest('button'); if (!b || !state.selDate) return;
-    if (b.dataset.flow === 'none') delete state.period[state.selDate]; else state.period[state.selDate] = b.dataset.flow;
-    RENDER.cycle();
+    P.put('/api/tracker/period', { date: state.selDate, flow: b.dataset.flow }).then(saved(), function (er) { setMsg('#cycle-msg', er.message, true); });
   });
   $('#log-today').addEventListener('click', function () {
     state.calMonth = new Date(today.getFullYear(), today.getMonth(), 1); state.selDate = key(today); RENDER.cycle();
     $('#day-sheet').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   });
 
-  $('#sym-chips').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; var s = b.dataset.s; if (state.symSel[s]) delete state.symSel[s]; else state.symSel[s] = 1; b.setAttribute('aria-pressed', String(!!state.symSel[s])); });
-  $('#tag-chips').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; var s = b.dataset.t; if (state.tagSel[s]) delete state.tagSel[s]; else state.tagSel[s] = 1; b.setAttribute('aria-pressed', String(!!state.tagSel[s])); });
+  $('#sym-chips').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; var s = b.dataset.s; state.symDirty = true; if (state.symSel[s]) delete state.symSel[s]; else state.symSel[s] = 1; b.setAttribute('aria-pressed', String(!!state.symSel[s])); });
+  $('#tag-chips').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; var s = b.dataset.t; state.symDirty = true; if (state.tagSel[s]) delete state.tagSel[s]; else state.tagSel[s] = 1; b.setAttribute('aria-pressed', String(!!state.tagSel[s])); });
   $('#sym-form').addEventListener('submit', function (e) {
     e.preventDefault();
     var syms = Object.keys(state.symSel), tags = Object.keys(state.tagSel);
     if (!syms.length && !tags.length) return setMsg('#sym-msg', 'Pick at least one symptom or tag.', true);
-    state.symLog = state.symLog.filter(function (x) { return key(x.date) !== key(today); });
-    state.symLog.unshift({ date: today, syms: syms, tags: tags });
-    RENDER.symptoms(); setMsg('#sym-msg', 'Saved for today.');
+    P.put('/api/tracker/symptoms', { symptoms: syms, tags: tags }).then(function () { state.symDirty = false; return saved('#sym-msg', 'Saved for today.')(); }, failed('#sym-msg'));
   });
 
   $('#meal-src').addEventListener('click', function (e) {
@@ -680,43 +696,49 @@
     if (!time) return setMsg('#meal-msg', 'Add the time.', true);
     if (!state.mealSrc) return setMsg('#meal-msg', 'Pick where it came from.', true);
     if (!text && state.mealSrc !== 'Skipped') return setMsg('#meal-msg', 'Add what you ate, or pick Skipped.', true);
-    state.meals.push({ type: $('#meal-type').value, time: time, src: state.mealSrc, text: text });
-    $('#meal-text').value = ''; state.mealSrc = null; RENDER.meals(); setMsg('#meal-msg', 'Meal added.');
+    P.post('/api/tracker/meals', { type: $('#meal-type').value, time: time, source: state.mealSrc, text: text })
+      .then(function () { $('#meal-text').value = ''; state.mealSrc = null; return saved('#meal-msg', 'Meal added.')(); }, failed('#meal-msg'));
   });
-  $('#meal-list').addEventListener('click', function (e) { var b = e.target.closest('[data-del]'); if (!b) return; state.meals.splice(+b.dataset.del, 1); RENDER.meals(); });
+  $('#meal-list').addEventListener('click', function (e) { var b = e.target.closest('[data-del]'); if (!b) return; P.del('/api/tracker/meals/' + b.dataset.del).then(saved(), failed('#meal-msg')); });
 
   $('#med-list').addEventListener('click', function (e) {
-    var d = e.target.closest('[data-del]'); if (d) { state.meds.splice(+d.dataset.del, 1); return RENDER.meds(); }
+    var d = e.target.closest('[data-del]'); if (d) return P.del('/api/tracker/meds/' + d.dataset.del).then(saved(), failed('#med-msg'));
     var b = e.target.closest('[data-med]'); if (!b) return;
-    var m = state.meds[+b.dataset.med]; m.today = m.today === b.dataset.v ? null : b.dataset.v; RENDER.meds();
+    var m = state.meds[+b.dataset.med];
+    P.put('/api/tracker/meds/' + m.id + '/log', { status: m.today === b.dataset.v ? null : b.dataset.v }).then(saved(), failed('#med-msg'));
   });
   $('#med-form').addEventListener('submit', function (e) {
     e.preventDefault();
     var name = $('#med-name').value.trim(), dose = $('#med-dose').value.trim();
     if (!name) return setMsg('#med-msg', 'Add the name as it is written on your prescription.', true);
-    state.meds.push({ name: name, dose: dose, today: null, week: [null, null, null, null, null, null] });
-    $('#med-name').value = ''; $('#med-dose').value = ''; RENDER.meds(); setMsg('#med-msg', 'Added.');
+    P.post('/api/tracker/meds', { name: name, dose: dose }).then(function () { $('#med-name').value = ''; $('#med-dose').value = ''; return saved('#med-msg', 'Added.')(); }, failed('#med-msg'));
   });
 
   $('#stress-chips').addEventListener('click', function (e) {
-    var b = e.target.closest('button'); if (!b) return; state.stress = +b.dataset.s;
-    Array.prototype.forEach.call(this.querySelectorAll('button'), function (o) { o.setAttribute('aria-pressed', String(o === b)); });
-    var msg = $('#stress-msg'); msg.className = 'msg-line';
-    msg.innerHTML = state.stress >= 4
-      ? 'Logged: ' + STRESS[state.stress - 1] + '. That sounds like a lot. If you would like to talk to someone, <a href="tel:14416"><strong>Tele-MANAS 14416</strong></a> is free and open 24×7.'
-      : 'Logged: ' + STRESS[state.stress - 1] + '. Thanks for telling us.';
+    var b = e.target.closest('button'); if (!b) return; var v = +b.dataset.s;
+    P.put('/api/tracker/stress', { value: v }).then(function () {
+      state.stress = v;
+      Array.prototype.forEach.call($('#stress-chips').querySelectorAll('button'), function (o) { o.setAttribute('aria-pressed', String(o === b)); });
+      var msg = $('#stress-msg'); msg.className = 'msg-line';
+      msg.innerHTML = v >= 4
+        ? 'Logged: ' + STRESS[v - 1] + '. That sounds like a lot. If you would like to talk to someone, <a href="tel:14416"><strong>Tele-MANAS 14416</strong></a> is free and open 24×7.'
+        : 'Logged: ' + STRESS[v - 1] + '. Thanks for telling us.';
+    }, failed('#stress-msg'));
   });
   $('#q-list').addEventListener('click', function (e) { var b = e.target.closest('[data-q]'); if (!b) return; run = { key: b.dataset.q, i: 0, answers: [] }; RENDER.stress(); window.scrollTo(0, 0); });
   $('#q-run').addEventListener('click', function (e) {
     var t = e.target;
-    if (t.closest('#q-cancel') || t.closest('#q-done')) {
-      if (t.closest('#q-done')) state.qHistory[run.key].push({ ago: 0, score: sum(run.answers) });
-      run = null; return RENDER.stress();
-    }
+    if (t.closest('#q-cancel')) { run = null; return RENDER.stress(); }
+    if (t.closest('#q-done')) { run = null; return refresh(); }
     if (t.closest('#q-back')) { run.i--; return renderRun(); }
-    var o = t.closest('.opt'); if (!o) return;
-    run.answers[run.i] = +o.dataset.a; run.i++; renderRun();
-    window.scrollTo(0, 0);
+    var o = t.closest('.opt'); if (!o || run.saving) return;
+    var n = QS[run.key].items.length;
+    run.answers[run.i] = +o.dataset.a;
+    if (run.i < n - 1) { run.i++; renderRun(); window.scrollTo(0, 0); return; }
+    run.saving = true;   // last answer: save it, then show the score the server worked out
+    P.post('/api/questionnaires', { kind: run.key, answers: run.answers }).then(function (r) {
+      run.saving = false; run.i = n; run.score = r.score; run.safety = r.safety; renderRun(); window.scrollTo(0, 0);
+    }, function (er) { run.saving = false; setMsg('#q-msg', er.message, true); });
   });
 
   $('#chat-form').addEventListener('submit', function (e) {
@@ -730,5 +752,8 @@
   $('#msgs').addEventListener('click', function (e) { var b = e.target.closest('[data-start]'); if (b) send(b.dataset.start); });
   $('#new-chat').addEventListener('click', startChat);
 
-  show(location.hash.slice(1));
+  Promise.all([P.get('/api/tracker'), P.get('/api/me')]).then(function (r) {
+    ingest(r[0]); P.applyUser(r[1].user);
+    show(location.hash.slice(1));
+  }, function (e) { $('#main').innerHTML = '<div class="card"><p class="empty">' + esc(e.message) + '</p></div>'; });
 })();

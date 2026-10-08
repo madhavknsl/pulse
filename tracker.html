@@ -33,7 +33,7 @@
       <div class="profile-menu">
         <div class="who"><strong>Ananya R.</strong><span>Signed in as User</span></div>
         <a href="profile.html">View profile</a>
-        <a href="index.html">Sign out</a>
+        <a href="index.html" data-signout>Sign out</a>
       </div>
     </details>
   </header>
@@ -193,6 +193,7 @@
           <div class="chips" id="ds-chips" role="group" aria-label="Flow for this day"></div>
         </div>
         <div style="margin-top:14px"><button class="btn btn-inline" id="log-today" type="button">Log today's flow</button></div>
+        <p class="msg-line" id="cycle-msg" role="status"></p>
         <p class="fine" style="margin-top:12px">Because PCOS cycles can be irregular, Pulse doesn't predict your next period or fertile days.</p>
       </div>
 
@@ -348,6 +349,7 @@
 
   </main>
 
+  <script src="js/pulse.js"></script>
   <script src="js/tracker.js"></script>
 </body>
 </html>
