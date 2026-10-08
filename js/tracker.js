@@ -496,49 +496,11 @@
   }
 
   /* ---------- journal (chat) ---------- */
-  // Scripted for the static phase. Rule-based and deterministic: every reply is a question, and a crisis phrase
-  // always gets the support card instead. A live AI later must keep the same two guarantees.
+  // Live AI: Claude asks the questions (rules in server/prompts/journal_guide.md) and scores the check-in. The chat is kept only in this page.
+  // The words below always get the support card at once, before the AI answers.
   var CRISIS = /suicid|kill myself|end my life|end it all|self[- ]?harm|hurt myself|want to die|wanna die|don'?t want to (live|be here)|better off dead|no reason to live|marna chahta|mar jana chahta|jeena nahi|khud ko (khatam|maar)/i;
-  var CATS = [
-    { id: 'low', re: /\b(sad|low|down|empty|numb|hopeless|worthless|cry|crying|depress\w*|heavy|tired of everything)\b/gi, q: [
-      'How long has it felt this way?', 'When was the last moment today that felt even a little lighter?', 'What does a low day look like for you, hour by hour?',
-      'What did you used to enjoy that feels far away now?'] },
-    { id: 'anxious', re: /\b(anxi\w*|worr\w*|panic\w*|nervous|scared|afraid|overthink\w*|stress\w*|tense|on edge)\b/gi, q: [
-      'What is the thought that keeps coming back?', 'What are you most afraid might happen?', 'Where do you feel it in your body?', 'When does the worry tend to get louder?'] },
-    { id: 'sleep', re: /\b(sleep\w*|insomnia|awake|nightmare\w*|exhaust\w*|tired|neend)\b/gi, q: [
-      'What does your mind do once you are in bed?', 'How did last night shape your day?', 'When did your sleep last feel okay, and what was different then?',
-      'What time does your mind start to wind down in the evening?'] },
-    { id: 'work', re: /\b(work\w*|job|boss|deadline\w*|meeting\w*|manager|office|client\w*|sprint\w*|laptop|burn\w*|release|oncall)\b/gi, q: [
-      'What part of work feels heaviest right now?', 'When did you last take a proper break during the day?', 'What would "enough" look like for today?',
-      'Who at work knows how stretched you are?'] },
-    { id: 'family', re: /\b(mom|mum|mummy|dad|papa|parents?|family|in-?laws?|brother|sister|ghar)\b/gi, q: [
-      'How do things feel between you and them at the moment?', 'What do you wish they understood about your days?', 'What have you been holding back from saying to them?'] },
-    { id: 'body', re: /\b(pcos|pcod|periods?|cycle|weight|skin|acne|hair|body|cramps?|bloat\w*|hormon\w*)\b/gi, q: [
-      'How has your body been feeling to you lately?', 'What has been the hardest part of dealing with this?', 'Who, if anyone, have you been able to talk to about it?'] },
-    { id: 'angry', re: /\b(angry|anger|irritat\w*|frustrat\w*|annoy\w*|rage|snapp\w*)\b/gi, q: [
-      'What happened just before you felt this?', 'What did you need in that moment that you did not get?'] },
-    { id: 'lonely', re: /\b(alone|lonely|nobody|no one|flatmates?|isolated|miss(ing)? (home|family))\b/gi, q: [
-      'Who do you feel closest to right now?', 'What is it like coming home to a quiet space after a long day?'] },
-    { id: 'food', re: /\b(eat\w*|food|meals?|hungry|binge\w*|crav\w*|swiggy|zomato|ordered|skipp\w*)\b/gi, q: [
-      'What was going on around the time you reached for food?', 'How were you feeling before that meal?'] },
-    { id: 'good', re: /\b(good|great|happy|better|proud|excited|fun|relaxed|calm|grateful)\b/gi, q: [
-      'What made that feel good?', 'What do you want to remember about today?'] }
-  ];
-  var DEFAULT_Q = ['Can you tell me a little more about that?', 'What has been on your mind the most today?', 'How did that feel in the moment?', 'What happened next?'];
   var STARTERS = ['Work has been a lot', 'I could not sleep', 'I am feeling low', 'I just need to vent'];
-  var chat = { used: {}, busy: false };
-
-  function pickQuestion(text) {
-    var best = null, bestScore = 0;
-    CATS.forEach(function (c) { var m = text.match(c.re); if (m && m.length > bestScore) { best = c; bestScore = m.length; } });
-    var bank = best ? best.q : DEFAULT_Q, id = best ? best.id : 'default';
-    var used = chat.used[id] || (chat.used[id] = []);
-    var pool = bank.filter(function (q) { return used.indexOf(q) < 0; });
-    if (!pool.length) { used.length = 0; pool = bank; }
-    var q = pool[Math.floor(Math.random() * pool.length)];
-    used.push(q);
-    return /\?\s*$/.test(q) ? q : DEFAULT_Q[0]; // guardrail: only ever ask
-  }
+  var chat = { history: [], busy: false, finished: false, ready: false, helped: false, noticed: false };
 
   function msgsEl() { return $('#msgs'); }
   function scrollDown() { var m = msgsEl(); m.scrollTop = m.scrollHeight; }
@@ -548,38 +510,121 @@
     var t = document.createElement('div'); t.className = 'txt'; t.textContent = text; row.appendChild(t);
     msgsEl().appendChild(row); scrollDown(); return row;
   }
-  function addCrisis() {
+  function addBlock(html) {   // a bot-side card (support, score, demo notice)
     var row = document.createElement('div'); row.className = 'msg bot';
-    row.innerHTML = '<span class="av">' + PULSE_MARK + '</span><div class="txt"><div class="crisis">' +
-      '<p><strong>I am really glad you said that out loud.</strong></p>' +
-      '<p>I am an AI, so I cannot help in a crisis, but a trained person can, right now. Tele-MANAS is free and open 24×7. In an emergency, call 112.</p>' +
-      '<div class="acts"><a class="btn btn-sm" href="tel:14416">Call 14416</a><a class="btn btn-sm btn-outline" href="tel:112">Call 112</a></div></div></div>';
+    row.innerHTML = '<span class="av">' + PULSE_MARK + '</span><div class="txt">' + html + '</div>';
     msgsEl().appendChild(row); scrollDown();
   }
+  var HELP = '<div class="acts"><a class="btn btn-sm" href="tel:14416">Call 14416</a><a class="btn btn-sm btn-outline" href="tel:112">Call 112</a></div>';
+  function addCrisis() {
+    chat.helped = true;
+    addBlock('<div class="crisis"><p><strong>I am really glad you said that out loud.</strong></p>' +
+      '<p>I am an AI, so I cannot help in a crisis, but a trained person can, right now. Tele-MANAS is free and open 24×7. In an emergency, call 112.</p>' + HELP + '</div>');
+  }
+
+  // What the page shows after a check-in. The DEMO box is only for the prototype and goes away in the real product.
+  var BAND_TEXT = { good: 'You seem to be doing okay today.', strain: 'There is some strain in what you shared.', heavy: 'A lot seems to be weighing on you.', low: 'Things sound really heavy right now.' };
+  function demoNotice(alert) {
+    if (!alert || !alert.triggered) return '';
+    var who = [];
+    if (alert.contact) who.push('<strong>' + esc(alert.contact.name) + '</strong>' + (alert.contact.relation ? ' (' + esc(alert.contact.relation) + ', emergency contact)' : ' (emergency contact)'));
+    alert.doctors.forEach(function (d) { who.push('<strong>' + esc(d) + '</strong>'); });
+    if (!who.length) {
+      return '<div class="demo-only"><span class="tag">Demo only</span>' + (alert.why_not === 'off'
+        ? 'No one was told, because automatic alerts are off. You can turn them on in <a href="healthcare.html#sharing">Healthcare, Sharing &amp; privacy</a>.'
+        : 'No one was told, because there is no emergency contact or linked doctor to tell. You can add one in <a href="healthcare.html#sharing">Healthcare, Sharing &amp; privacy</a>.') + '</div>';
+    }
+    return '<div class="demo-only"><span class="tag">Demo only</span>' + who.join(' and ') + (alert.already ? ' ' + (who.length > 1 ? 'were' : 'was') + ' already notified in the last hour.' : ' ' + (who.length > 1 ? 'have' : 'has') + ' been notified.') + '</div>';
+  }
+  function showCheck(check, final) {
+    if (!check) return;
+    var low = check.score === null || check.score < 50;
+    if (final) {
+      addBlock('<div class="score-card"><div class="score-line"><span class="score-n">' + (check.score === null ? '–' : check.score) + '</span><span class="score-of">/ 100</span></div>' +
+        '<p><strong>' + esc(BAND_TEXT[check.band] || '') + '</strong></p>' +
+        '<p class="fine">A check-in score from this conversation only. It is not a diagnosis. Pulse keeps this number, not your chat.</p>' +
+        (low && !chat.helped ? '<p>If you would like to talk to someone, Tele-MANAS <a href="tel:14416"><strong>14416</strong></a> is free and open 24×7.</p>' + HELP : '') + '</div>');
+      if (low) chat.helped = true;
+    } else if (low && check.risk !== 'crisis' && !chat.helped) {
+      chat.helped = true;
+      addBlock('<div class="crisis"><p>If you would like to talk to someone, Tele-MANAS <a href="tel:14416"><strong>14416</strong></a> is free and open 24×7. In an emergency, call 112.</p>' + HELP + '</div>');
+    }
+    var dn = chat.noticed && final ? '' : demoNotice(check.alert);   // say it once per chat
+    if (dn) { chat.noticed = true; addBlock(dn); }
+  }
+
+  function setBusy(b) { chat.busy = b; $('#chat-send').disabled = b || chat.finished; $('#finish-chat').disabled = b || chat.finished || !chat.history.length; }
   function startChat() {
-    chat.used = {}; chat.busy = false;
+    chat.history = []; chat.finished = false; chat.helped = false; chat.noticed = false;
     msgsEl().innerHTML = '';
     addMsg('bot', 'Hi ' + state.name + '. This is a quiet space to think out loud. I will only ask questions, and I cannot give advice. What is on your mind?');
     var s = document.createElement('div'); s.className = 'starters'; s.id = 'starters';
     s.innerHTML = STARTERS.map(function (t) { return '<button type="button" class="chip-btn" data-start="' + esc(t) + '">' + esc(t) + '</button>'; }).join('');
     msgsEl().appendChild(s);
-    $('#chat-send').disabled = false;
+    $('#chat-in').disabled = false; setBusy(false);
+  }
+  function typingRow() {
+    var row = document.createElement('div'); row.className = 'msg bot';
+    row.innerHTML = '<span class="av">' + PULSE_MARK + '</span><div class="txt"><span class="typing" aria-label="Typing"><i></i><i></i><i></i></span></div>';
+    msgsEl().appendChild(row); scrollDown(); return row;
   }
   function send(text) {
-    text = text.trim(); if (!text || chat.busy) return;
+    text = text.trim(); if (!text || chat.busy || chat.finished) return;
     var st = $('#starters'); if (st) st.remove();
     addMsg('user', text);
-    chat.busy = true; $('#chat-send').disabled = true;
-    var typing = document.createElement('div'); typing.className = 'msg bot';
-    typing.innerHTML = '<span class="av">' + PULSE_MARK + '</span><div class="txt"><span class="typing" aria-label="Typing"><i></i><i></i><i></i></span></div>';
-    msgsEl().appendChild(typing); scrollDown();
-    setTimeout(function () {
-      typing.remove();
-      if (CRISIS.test(text)) addCrisis(); else addMsg('bot', pickQuestion(text));
-      chat.busy = false; $('#chat-send').disabled = false; $('#chat-in').focus();
-    }, 700 + Math.random() * 600);
+    chat.history.push({ role: 'user', content: text });
+    var instant = CRISIS.test(text);
+    if (instant) addCrisis();
+    setBusy(true);
+    var typing = instant ? null : typingRow();
+    P.post('/api/journal/chat', { messages: chat.history }).then(function (r) {
+      if (typing) typing.remove();
+      if (r.crisis && !instant) addCrisis();
+      if (r.reply) { addMsg('bot', r.reply); chat.history.push({ role: 'assistant', content: r.reply }); }
+      showCheck(r.check, false);
+    }, function (e) {
+      if (typing) typing.remove();
+      if (e.code === 'consent_required') return showGate();
+      if (!instant) addMsg('bot', e.message);
+    }).then(function () { setBusy(false); $('#chat-in').focus(); });
   }
-  RENDER.journal = function () { if (!msgsEl().children.length) startChat(); };
+  function finishChat() {
+    if (chat.busy || chat.finished || !chat.history.length) return;
+    setBusy(true);
+    var typing = typingRow();
+    P.post('/api/journal/finish', { messages: chat.history }).then(function (r) {
+      typing.remove(); chat.finished = true; $('#chat-in').disabled = true; showCheck(r.check, true);
+      addMsg('bot', 'Thank you for writing today. Start a new chat whenever you like.');
+    }, function (e) { typing.remove(); addMsg('bot', e.message); }).then(function () { setBusy(false); });
+  }
+
+  /* the AI only sees what is typed here once the person has agreed to that, in words they can read */
+  function showGate(unavailable) {
+    chat.ready = false;
+    $('#journal-gate').hidden = false; msgsEl().hidden = true; $('#composer').hidden = true; $('#finish-chat').hidden = true; $('#new-chat').hidden = true;
+    $('#journal-gate').innerHTML = unavailable
+      ? '<h2>The Journal assistant is not available</h2><p class="muted">It is not set up on this computer yet.</p>'
+      : '<h2>Turn on the AI Journal</h2>' +
+        '<p class="muted">The Journal is a chat with an AI that only asks questions. To do that, what you type is sent to <strong>Claude</strong>, an AI model made by Anthropic.</p>' +
+        '<ul class="gate-list"><li>Pulse does <strong>not</strong> save the chat, and your doctor never sees it.</li>' +
+        '<li>Pulse keeps one thing from each check-in: a wellbeing score out of 100.</li>' +
+        '<li>If that score is very low, or you mention hurting yourself, Pulse can tell the emergency contact and doctor you chose. You decide that under <a href="healthcare.html#sharing">Healthcare, Sharing &amp; privacy</a>.</li>' +
+        '<li>You can turn this off any time in your <a href="profile.html#consents">profile</a>.</li></ul>' +
+        '<div class="btn-row"><button class="btn btn-inline" type="button" id="gate-on">I agree, turn it on</button></div><p class="msg-line err" id="gate-msg" role="alert"></p>';
+  }
+  function openJournal() {
+    $('#journal-gate').hidden = true; msgsEl().hidden = false; $('#composer').hidden = false; $('#finish-chat').hidden = false; $('#new-chat').hidden = false;
+    chat.ready = true; if (!msgsEl().children.length) startChat();
+  }
+  $('#journal-gate').addEventListener('click', function (e) {
+    if (!e.target.closest('#gate-on')) return;
+    P.put('/api/consents', { consents: { ai_journal: true } }).then(openJournal, function (er) { $('#gate-msg').textContent = er.message; });
+  });
+  RENDER.journal = function () {
+    if (chat.ready) return;
+    P.get('/api/journal/status').then(function (s) { if (!s.available) showGate(true); else if (!s.consent) showGate(); else openJournal(); },
+      function (e) { addMsg('bot', e.message); });
+  };
 
   /* ---------- routing ---------- */
   var current = 'overview';
@@ -751,6 +796,7 @@
   });
   $('#msgs').addEventListener('click', function (e) { var b = e.target.closest('[data-start]'); if (b) send(b.dataset.start); });
   $('#new-chat').addEventListener('click', startChat);
+  $('#finish-chat').addEventListener('click', finishChat);
 
   Promise.all([P.get('/api/tracker'), P.get('/api/me')]).then(function (r) {
     ingest(r[0]); P.applyUser(r[1].user);

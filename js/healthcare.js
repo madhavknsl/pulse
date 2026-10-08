@@ -433,7 +433,7 @@
           : '<button class="btn-danger-sm" type="button" data-revoke="' + d.id + '">Stop sharing and unlink</button>') + '</div></div>';
     }).join('') : '<div class="card"><p class="empty">No doctor has access to your data. <a href="#providers">Find a doctor</a> to link one.</p></div>';
     var e = state.emergency || { name: '', relation: '', phone: '', consent: false, alert_doctor: false };
-    $('#em-name').value = e.name; $('#em-rel').value = e.relation; $('#em-phone').value = e.phone; $('#em-consent').checked = e.consent; $('#em-doc').checked = e.alert_doctor;
+    $('#em-name').value = e.name; $('#em-rel').value = e.relation; $('#em-phone').value = e.phone; $('#em-consent').checked = e.consent; $('#em-doc').checked = e.alert_doctor; $('#em-auto').checked = !!e.auto_alert;
     $('#log-list').innerHTML = logHtml();
     drawDeleteBox();
   };
@@ -592,7 +592,7 @@
   });
   $('#em-form').addEventListener('submit', function (e) {
     e.preventDefault();
-    P.put('/api/emergency', { name: $('#em-name').value.trim(), relation: $('#em-rel').value.trim(), phone: $('#em-phone').value.replace(/\s/g, ''), consent: $('#em-consent').checked, alert_doctor: $('#em-doc').checked })
+    P.put('/api/emergency', { name: $('#em-name').value.trim(), relation: $('#em-rel').value.trim(), phone: $('#em-phone').value.replace(/\s/g, ''), consent: $('#em-consent').checked, alert_doctor: $('#em-doc').checked, auto_alert: $('#em-auto').checked })
       .then(function () { return reload().then(function () { setMsg('#em-msg', 'Saved. Only used if you ask for urgent help.'); }); }, function (er) { setMsg('#em-msg', er.message, true); });
   });
   $('#data-export').addEventListener('click', function () {

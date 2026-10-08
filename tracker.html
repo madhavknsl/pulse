@@ -331,10 +331,11 @@
       <div class="chat">
         <div class="chat-top">
           <div><h1>Journal</h1><p>An AI that only asks questions. It can't give advice.</p></div>
-          <button class="btn-ghost" id="new-chat" type="button">New chat</button>
+          <div class="chat-acts"><button class="btn-ghost" id="finish-chat" type="button">Finish chat</button><button class="btn-ghost" id="new-chat" type="button">New chat</button></div>
         </div>
+        <div class="journal-gate" id="journal-gate" hidden></div>
         <div class="msgs" id="msgs" aria-live="polite"></div>
-        <div class="composer">
+        <div class="composer" id="composer">
           <form id="chat-form" novalidate>
             <label class="visually-hidden" for="chat-in">Write a message</label>
             <textarea id="chat-in" rows="1" maxlength="2000" placeholder="Say what's on your mind…"></textarea>
@@ -342,7 +343,7 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
             </button>
           </form>
-          <p class="fine">AI, not a therapist. This chat isn't saved in the prototype.</p>
+          <p class="fine">AI, not a therapist. Your messages go to Claude (by Anthropic) to write the questions. Pulse doesn't save the chat.</p>
         </div>
       </div>
     </section>

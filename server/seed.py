@@ -70,6 +70,8 @@ def _create(conn):
     store.set_setting(conn, uid, "device", {"connected": True, "last_sync": _stamp(0, datetime.now().hour), "perms": dict(defs.DEFAULT_DEVICE["perms"])})
     store.set_setting(conn, uid, "plan", {"price": 399, "status": "active", "renews": (date.today() + timedelta(days=18)).isoformat(), "method": "UPI"})
     store.set_setting(conn, uid, "ui", defs.DEFAULT_UI)
+    store.set_setting(conn, uid, "emergency", {"name": "Rohan Raman", "relation": "Brother", "phone": "9876501234", "consent": True,
+                                              "alert_doctor": True, "auto_alert": True})   # sample contact, so the Journal alert can be demonstrated
 
     # --- 90 days of watch + check-in data: sleep nudges mood, so the patterns are real (in the simulation) ---
     prev_steps = 4700

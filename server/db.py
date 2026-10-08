@@ -7,7 +7,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.environ.get("PULSE_DATA", ROOT / "data"))
 UPLOAD_DIR = DATA_DIR / "uploads"
 DB_PATH = DATA_DIR / "pulse.db"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 SCHEMA = """
 CREATE TABLE users (
@@ -236,7 +236,38 @@ CREATE INDEX idx_meals_user ON meals (user_id, date);
 CREATE INDEX idx_workouts_user ON workouts (user_id, date);
 CREATE INDEX idx_appts_provider ON appointments (provider_id, date, minute);
 CREATE INDEX idx_q_user ON questionnaires (user_id, kind, date);
+""" + """
+-- v2: the AI journal keeps only a score per check-in (never the chat), and a record of who was alerted
+CREATE TABLE journal_checks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL,
+  score INTEGER,                 -- 0-100, higher is better. NULL if the AI could not be reached during a safety phrase
+  risk TEXT NOT NULL,            -- none | concern | crisis
+  turns INTEGER NOT NULL,        -- how many messages the person had written
+  source TEXT NOT NULL           -- auto | finish | safety_phrase
+);
+
+CREATE TABLE alerts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL,
+  recipient_kind TEXT NOT NULL,  -- doctor | emergency_contact
+  provider_id TEXT,
+  recipient_name TEXT NOT NULL,
+  recipient_phone TEXT,
+  message TEXT NOT NULL,
+  score INTEGER,
+  risk TEXT NOT NULL,
+  delivered INTEGER NOT NULL DEFAULT 0   -- prototype: nothing is actually sent yet
+);
+
+CREATE INDEX idx_journal_user ON journal_checks (user_id, created_at);
+CREATE INDEX idx_alerts_user ON alerts (user_id, created_at);
 """
+
+# Older databases are upgraded in place, one version at a time. The v2 tables are the second half of SCHEMA.
+MIGRATIONS = {1: SCHEMA.split("-- v2:", 1)[1].split("\n", 1)[1]}
 
 
 def connect():
@@ -262,8 +293,13 @@ def init():
         if version == 0:
             conn.executescript(SCHEMA)
             conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
-        elif version != SCHEMA_VERSION:
-            raise SystemExit(f"Database schema version {version} is not supported by this build.")
+        elif version > SCHEMA_VERSION:
+            raise SystemExit(f"Database schema version {version} is newer than this build supports.")
+        else:
+            while version < SCHEMA_VERSION:
+                conn.executescript(MIGRATIONS[version])
+                version += 1
+                conn.execute(f"PRAGMA user_version = {version}")
     finally:
         conn.close()
 

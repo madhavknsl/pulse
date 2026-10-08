@@ -158,7 +158,7 @@
       <div id="share-docs"></div>
       <div class="card">
         <h2>Emergency contact</h2>
-        <p class="fine">Someone you trust. They are only contacted if you ask for urgent help, and only if you agree below.</p>
+        <p class="fine">Someone you trust. They are only told if you ask for urgent help, or if you choose automatic alerts below.</p>
         <form id="em-form" novalidate>
           <div class="form-row">
             <div class="field"><label for="em-name">Name</label><input class="input" id="em-name" type="text" maxlength="60" autocomplete="off"></div>
@@ -167,6 +167,7 @@
           </div>
           <label class="check-row"><input type="checkbox" id="em-consent"> I agree this person can be contacted if I ask for urgent help.</label>
           <label class="check-row"><input type="checkbox" id="em-doc"> Also let my linked doctor know if I ask for urgent help.</label>
+          <label class="check-row"><input type="checkbox" id="em-auto"> Tell them automatically if my Journal check-in score is very low, or I mention hurting myself. Only people ticked above are told, and they never see the chat.</label>
           <div style="margin-top:16px"><button class="btn btn-inline" type="submit">Save</button></div>
           <p class="msg-line" id="em-msg" role="status"></p>
         </form>

@@ -269,7 +269,7 @@
     }).join('') : '<p class="muted" style="margin-top:14px">No doctor linked yet.</p>';
     h += '<div class="btn-row" style="margin-top:12px"><a class="btn-outline-sm" href="healthcare.html#sharing" style="' + link + '">Manage sharing</a><a class="btn-outline-sm" href="healthcare.html#providers" style="' + link + '">Find a doctor</a></div>' +
       '<h3 style="margin-top:18px;font-size:.8125rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">Emergency contact</h3>';
-    h += EM ? '<p style="margin-top:6px"><strong>' + esc(EM.name) + '</strong>' + (EM.relation ? ' · ' + esc(EM.relation) : '') + ' · ' + esc(EM.phone.slice(0, 2)) + '••••••' + esc(EM.phone.slice(-2)) + '</p><p class="fine">Contacted only if you ask for urgent help' + (EM.alert_doctor ? ', and your linked doctor is told too' : '') + '.</p>'
+    h += EM ? '<p style="margin-top:6px"><strong>' + esc(EM.name) + '</strong>' + (EM.relation ? ' · ' + esc(EM.relation) : '') + ' · ' + esc(EM.phone.slice(0, 2)) + '••••••' + esc(EM.phone.slice(-2)) + '</p><p class="fine">Told if you ask for urgent help' + (EM.auto_alert ? ' or if a Journal check-in is very low' : '') + (EM.alert_doctor ? ', and your linked doctor is told too' : '') + '.</p>'
       : '<p class="muted" style="margin-top:6px">Not set up yet. Someone you trust, contacted only if you ask for urgent help.</p>';
     h += '<div class="btn-row" style="margin-top:10px"><a class="btn-outline-sm" href="healthcare.html#sharing" style="' + link + '">' + (EM ? 'Change emergency contact' : 'Set up emergency contact') + '</a></div>';
     $('#care-body').innerHTML = h;

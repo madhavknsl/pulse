@@ -144,7 +144,7 @@ class Handler(BaseHTTPRequestHandler):
         req = router.Request(method, path, query, self.headers, body, self._cookies(),
                              self.client_address[0])
         conn = db.connect()
-        writing = method not in ("GET", "HEAD")
+        writing = method not in ("GET", "HEAD") and not getattr(fn, "no_tx", False)
         try:
             req.conn = conn
             req.token = req.cookies.get(security.COOKIE)

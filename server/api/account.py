@@ -137,7 +137,7 @@ def waitlist(req):
 # ---------- the right to a copy, and to deletion ----------
 _EXPORT_TABLES = ["measurements", "daily", "period_days", "symptom_logs", "meals", "medications", "workouts", "questionnaires",
                   "appointments", "links", "access_log", "tests", "results", "questions", "summary_shares", "diet_log", "invites",
-                  "consents", "user_settings"]
+                  "consents", "user_settings", "journal_checks", "alerts"]
 
 
 @route("GET", "/api/data/export")

@@ -85,7 +85,8 @@
     mental_health: ['My mood, stress and questionnaire answers', 'Mental-health data is among the most sensitive there is. Used for your daily check-ins, your starting scores and your Health Factor.', false],
     cycle_symptoms: ['My periods and symptoms', 'Used to show your cycle history and what moves with it.', false],
     wearable: ['My sleep, activity and heart data', 'From a watch or typed in by you. Used for your trends and patterns.', false],
-    meals_meds: ['My meals and medicines', 'Used to show eating patterns and keep a record for your doctor. Pulse never suggests medicines.', false]
+    meals_meds: ['My meals and medicines', 'Used to show eating patterns and keep a record for your doctor. Pulse never suggests medicines.', false],
+    ai_journal: ['Journal chat with AI', 'What you type in the Journal is sent to Claude, an AI model made by Anthropic, so it can ask you questions. Pulse does not save the chat. It keeps only a wellbeing score from it.', false]
   };
 
   /* ---------- PHQ-9 and GAD-7 (standard public-domain wording) ---------- */

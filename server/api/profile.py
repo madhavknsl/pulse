@@ -163,7 +163,8 @@ def put_emergency(req):
     if not flag(d.get("consent"), "consent"):
         raise bad("Please confirm this person can be contacted if you ask for urgent help.", "consent")
     out = {"name": text(d.get("name"), "name", max_len=60), "relation": text(d.get("relation"), "relation", max_len=40, required=False) or "",
-           "phone": phone(d.get("phone")), "consent": True, "alert_doctor": flag(d.get("alert_doctor", False), "alert_doctor")}
+           "phone": phone(d.get("phone")), "consent": True, "alert_doctor": flag(d.get("alert_doctor", False), "alert_doctor"),
+           "auto_alert": flag(d.get("auto_alert", False), "auto_alert")}
     store.set_setting(req.conn, req.user["id"], "emergency", out)
     store.log_access(req.conn, req.user["id"], "You saved an emergency contact")
     return {"emergency": out}

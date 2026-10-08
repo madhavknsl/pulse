@@ -9,8 +9,10 @@ ROUTES = []
 MAX_JSON = 1_000_000
 
 
-def route(method, pattern, auth=True):
+def route(method, pattern, auth=True, tx=True):
+    """tx=False: the handler opens its own transaction, so a slow outside call never holds the database lock."""
     def deco(fn):
+        fn.no_tx = not tx
         ROUTES.append((method.upper(), re.compile("^" + pattern + "$"), fn, auth))
         return fn
     return deco

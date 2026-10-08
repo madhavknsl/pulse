@@ -15,7 +15,7 @@ SHARE_LABELS = {
 }
 
 # Explicit consent, one per kind of data (DPDP-style: separate, specific, withdrawable).
-CONSENT_KINDS = ["terms", "health_basics", "mental_health", "cycle_symptoms", "wearable", "meals_meds"]
+CONSENT_KINDS = ["terms", "health_basics", "mental_health", "cycle_symptoms", "wearable", "meals_meds", "ai_journal"]
 CONSENT_REQUIRED = ["terms", "health_basics"]
 CONSENT_VERSION = "v1"
 

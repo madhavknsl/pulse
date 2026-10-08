@@ -320,11 +320,12 @@
       field('Target weight (kg), optional', 'g-weight', input('g-weight', 'number', g.weight_kg, 'inputmode="decimal" min="25" max="250" step="0.1"'), 'Only if you and your doctor have one in mind.') +
       '<div class="group-label">Reminders</div>' +
       '<div class="two">' + field('Daily check-in at', 'n-time', input('n-time', 'time', n.checkin.time)) + field('Nudges per day, at most', 'n-limit', select('n-limit', ['0', '1', '2', '3'], String(n.limit)), 'Nudges follow your data, not whether you opened the app.') + '</div>' +
-      '<div class="group-label">Emergency contact, optional</div><p class="why" style="margin:0">Someone you trust. They are contacted only if you ask for urgent help.</p>' +
+      '<div class="group-label">Emergency contact, optional</div><p class="why" style="margin:0">Someone you trust. They are told only if you ask for urgent help, or if you choose automatic alerts below.</p>' +
       '<div class="two">' + field('Name', 'em-name', input('em-name', 'text', e.name, 'maxlength="60"')) + field('Relationship', 'em-rel', input('em-rel', 'text', e.relation, 'maxlength="40" placeholder="e.g. Friend"')) + '</div>' +
       field('Mobile number', 'em-phone', input('em-phone', 'tel', e.phone, 'inputmode="numeric" maxlength="10" placeholder="10 digits"')) +
       '<label class="consent-row" style="padding:0"><input type="checkbox" id="em-consent"' + (e.consent ? ' checked' : '') + '><span class="d">I agree this person can be contacted if I ask for urgent help.</span></label>' +
       (linkedAny ? '<label class="consent-row" style="padding:0"><input type="checkbox" id="em-doc"' + (e.alert_doctor ? ' checked' : '') + '><span class="d">Also let my linked doctor know if I ask for urgent help.</span></label>' : '') +
+      '<label class="consent-row" style="padding:0"><input type="checkbox" id="em-auto"' + (e.auto_alert ? ' checked' : '') + '><span class="d">Tell them automatically if my Journal check-in score is very low, or I mention hurting myself. They never see the chat.</span></label>' +
       navRow({ label: 'Finish' }) + '</form>');
   }
   function submitFinish() {
@@ -340,7 +341,7 @@
     busy(true);
     P.put('/api/settings/goals', goals)
       .then(function () { return P.put('/api/settings/notifications', notif); })
-      .then(function () { return any ? P.put('/api/emergency', { name: name, relation: $('#em-rel').value.trim(), phone: phone, consent: true, alert_doctor: !!($('#em-doc') && $('#em-doc').checked) }) : null; })
+      .then(function () { return any ? P.put('/api/emergency', { name: name, relation: $('#em-rel').value.trim(), phone: phone, consent: true, alert_doctor: !!($('#em-doc') && $('#em-doc').checked), auto_alert: $('#em-auto').checked }) : null; })
       .then(function () { return P.post('/api/onboarding/complete'); })
       .then(function () { busy(false); S.step = 9; S.goals = goals; render(); }, function (e) { busy(false); showErr(e.message, FIELD_ID[e.field]); });
   }
