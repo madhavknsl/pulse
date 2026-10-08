@@ -36,19 +36,15 @@
 
   <main class="dash">
 
-    <!-- Three buttons in a row -->
+    <!-- Two wide buttons in a row -->
     <nav class="quick-nav" aria-label="Sections">
-      <a class="nav-btn" href="#">
+      <a class="nav-btn" href="tracker.html">
         <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2.5-6 4 12 2.5-6H21"/></svg></span>
         Tracker
       </a>
       <a class="nav-btn" href="#">
         <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="5"/><path d="M12 8v8M8 12h8"/></svg></span>
         Healthcare
-      </a>
-      <a class="nav-btn" href="#">
-        <span class="ico" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></span>
-        Reports
       </a>
     </nav>
 
@@ -97,6 +93,16 @@
         <p class="support" id="support" hidden>
           Sorry today feels heavy. If you would like to talk to someone, <a href="tel:14416"><strong>Tele-MANAS 14416</strong></a> is free and open 24×7.
         </p>
+
+        <!-- Last 30 days of check-ins -->
+        <div class="log-cal">
+          <div class="log-head">
+            <h3>Last 30 days</h3>
+            <span class="count" id="log-count" aria-live="polite"></span>
+          </div>
+          <div class="log-grid" id="log-grid" role="img" aria-label="Check-in calendar for the last 30 days"></div>
+          <div class="log-legend"><span><i class="on"></i>Checked in</span><span><i></i>No check-in</span></div>
+        </div>
       </section>
     </div>
 
@@ -250,7 +256,7 @@
         out += '<path d="' + line + ' L' + xs[n - 1].toFixed(1) + ' ' + (H - PB) + ' L' + xs[0].toFixed(1) + ' ' + (H - PB) + ' Z" fill="url(#hfFill)"/>';
         out += '<path class="line" d="' + line + '"/>';
 
-        var ticks = n === 21 ? [[0, '3 weeks ago'], [7, '2 weeks ago'], [14, '1 week ago'], [20, 'Today']]
+        var ticks = n === 21 ? [[0, '3 weeks ago'], [10, '10 days ago'], [20, 'Today']]
                              : [[0, '90 days ago'], [45, '45 days ago'], [89, 'Today']];
         ticks.forEach(function (tk, k) {
           var anchor = k === 0 ? 'start' : (k === ticks.length - 1 ? 'end' : 'middle');
@@ -307,6 +313,29 @@
         resizeTimer = setTimeout(function () { render(current); }, 150);
       });
 
+      /* ---------- 30-day check-in calendar (sample history; index 29 = today) ---------- */
+      var logRand = rng(21), logged = [];
+      for (i = 0; i < 29; i++) logged.push(logRand() > 0.2);
+      logged.push(false); // today: not checked in yet
+
+      function renderLog() {
+        var t = new Date(); t.setHours(0, 0, 0, 0);
+        var start = new Date(t); start.setDate(t.getDate() - 29);
+        var out = 'SMTWTFS'.split('').map(function (d) { return '<span class="dow" aria-hidden="true">' + d + '</span>'; }).join('');
+        for (var b = 0; b < start.getDay(); b++) out += '<span class="log-cell blank" aria-hidden="true"></span>';
+        var n = 0;
+        for (var k = 0; k < 30; k++) {
+          var d = new Date(start); d.setDate(start.getDate() + k);
+          if (logged[k]) n++;
+          var label = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+          out += '<span class="log-cell' + (logged[k] ? ' on' : '') + (k === 29 ? ' today' : '') + '" title="' +
+                 label + (k === 29 ? ' (today)' : '') + ': ' + (logged[k] ? 'checked in' : 'no check-in') + '">' + d.getDate() + '</span>';
+        }
+        document.getElementById('log-grid').innerHTML = out;
+        document.getElementById('log-count').textContent = n + ' of 30 days';
+      }
+      renderLog();
+
       /* ---------- daily check-in (static: nothing is stored or sent) ---------- */
       var moods = document.querySelectorAll('.mood');
       var form = document.getElementById('say');
@@ -340,6 +369,7 @@
         }
         note.className = 'note';
         note.textContent = 'Logged for today. Thanks for checking in.';
+        logged[29] = true; renderLog();
         recap.hidden = !text;
         recap.textContent = text ? 'You wrote: ' + text : '';
         support.hidden = !(mood && mood <= 2); // low days get a way to reach a person

@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Pulse – Tracker</title>
+  <meta name="theme-color" content="#2563eb">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%232563eb'/%3E%3Cpath d='M5 17h5l3-7 5 13 3-6h6' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="hdr-left">
+      <button class="menu-btn" id="menu-btn" type="button" aria-label="Open tracker menu" aria-expanded="false" aria-controls="sidebar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
+      </button>
+      <a class="brand" href="user.html" aria-label="Pulse home">
+        <svg viewBox="0 0 32 32" aria-hidden="true">
+          <rect width="32" height="32" rx="9" fill="#2563eb"/>
+          <path d="M5 17h5l3-7 5 13 3-6h6" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        PULSE
+      </a>
+    </div>
+
+    <details class="profile" id="profile">
+      <summary aria-label="Profile menu">
+        <span class="avatar" aria-hidden="true">AR</span>
+        <span class="pname">Ananya</span>
+        <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </summary>
+      <div class="profile-menu">
+        <div class="who"><strong>Ananya R.</strong><span>Signed in as User</span></div>
+        <a href="#">View profile</a>
+        <a href="index.html">Sign out</a>
+      </div>
+    </details>
+  </header>
+
+  <!-- Left sidebar: built from the NAV list in tracker.js -->
+  <nav class="sidebar" id="sidebar" aria-label="Tracker menu"></nav>
+  <div class="scrim" id="scrim" hidden></div>
+
+  <main class="tr-main" id="main">
+
+    <!-- ================= Overview ================= -->
+    <section class="view" id="view-overview" hidden>
+      <header class="view-head">
+        <div>
+          <h1>Your tracker</h1>
+          <p class="sub">Everything you track, in one place. Tap a tile, or open the menu.</p>
+        </div>
+        <span class="sync-chip"><i></i>Watch connected · demo data</span>
+      </header>
+      <div class="tiles" id="tiles"></div>
+    </section>
+
+    <!-- ================= Steps ================= -->
+    <section class="view" id="view-steps" hidden>
+      <header class="view-head">
+        <div><h1>Steps</h1><p class="sub">Counted by your watch</p></div>
+        <div class="seg" data-for="steps" role="group" aria-label="Time range">
+          <button type="button" data-days="7" aria-pressed="true">7 days</button>
+          <button type="button" data-days="30" aria-pressed="false">30 days</button>
+        </div>
+      </header>
+      <div class="card">
+        <div class="big-line"><span class="big" id="steps-big"></span><span class="muted" id="steps-goal"></span></div>
+        <div class="bar"><i id="steps-bar"></i></div>
+      </div>
+      <div class="stats" id="steps-stats"></div>
+      <div class="card"><h2>Daily steps</h2><svg class="chart" id="chart-steps" role="img"></svg></div>
+    </section>
+
+    <!-- ================= Heart rate ================= -->
+    <section class="view" id="view-heart" hidden>
+      <header class="view-head">
+        <div><h1>Heart rate</h1><p class="sub">Resting heart rate from your watch</p></div>
+        <div class="seg" data-for="heart" role="group" aria-label="Time range">
+          <button type="button" data-days="7" aria-pressed="true">7 days</button>
+          <button type="button" data-days="30" aria-pressed="false">30 days</button>
+        </div>
+      </header>
+      <div class="card">
+        <div class="big-line"><span class="big" id="hr-big"></span><span class="muted">bpm resting today</span></div>
+        <p class="fine" style="margin-top:8px">Resting heart rate is your pulse when you are still. It often moves with stress, sleep and illness.</p>
+      </div>
+      <div class="stats" id="hr-stats"></div>
+      <div class="card"><h2>Resting heart rate</h2><svg class="chart" id="chart-hr" role="img"></svg></div>
+    </section>
+
+    <!-- ================= SpO2 ================= -->
+    <section class="view" id="view-spo2" hidden>
+      <header class="view-head">
+        <div><h1>SpO₂</h1><p class="sub">Blood oxygen estimated overnight by your watch</p></div>
+        <div class="seg" data-for="spo2" role="group" aria-label="Time range">
+          <button type="button" data-days="7" aria-pressed="true">7 days</button>
+          <button type="button" data-days="30" aria-pressed="false">30 days</button>
+        </div>
+      </header>
+      <div class="card">
+        <div class="big-line"><span class="big" id="spo-big"></span><span class="muted">% average last night</span></div>
+        <p class="fine" style="margin-top:8px">Watch readings are estimates, not a medical measurement.</p>
+      </div>
+      <div class="stats" id="spo-stats"></div>
+      <div class="card"><h2>Nightly average</h2><svg class="chart" id="chart-spo" role="img"></svg></div>
+    </section>
+
+    <!-- ================= Sleep ================= -->
+    <section class="view" id="view-sleep" hidden>
+      <header class="view-head">
+        <div><h1>Sleep</h1><p class="sub">From your watch, or add a night yourself</p></div>
+        <div class="seg" data-for="sleep" role="group" aria-label="Time range">
+          <button type="button" data-days="7" aria-pressed="true">7 nights</button>
+          <button type="button" data-days="30" aria-pressed="false">30 nights</button>
+        </div>
+      </header>
+      <div class="card">
+        <div class="big-line"><span class="big" id="sleep-big"></span><span class="muted">last night</span></div>
+      </div>
+      <div class="stats" id="sleep-stats"></div>
+      <div class="card"><h2>Hours slept</h2><svg class="chart" id="chart-sleep" role="img"></svg></div>
+      <form class="card" id="sleep-form" novalidate>
+        <h2>Add last night</h2>
+        <div class="form-row">
+          <div class="field"><label for="bed">Went to bed</label><input class="input" id="bed" type="time" required></div>
+          <div class="field"><label for="wake">Woke up</label><input class="input" id="wake" type="time" required></div>
+          <button class="btn btn-inline" type="submit">Save sleep</button>
+        </div>
+        <p class="msg-line" id="sleep-msg" role="status"></p>
+      </form>
+    </section>
+
+    <!-- ================= Weight ================= -->
+    <section class="view" id="view-weight" hidden>
+      <header class="view-head">
+        <div><h1>Weight</h1><p class="sub">A weekly check-in is plenty. Day-to-day changes are mostly water.</p></div>
+        <label class="switch-row"><span class="switch"><input type="checkbox" id="hide-weight"><span></span></span>Hide numbers</label>
+      </header>
+      <div class="card" id="weight-card"></div>
+      <div class="card" id="weight-chart-card"><h2>Weekly weight</h2><svg class="chart" id="chart-weight" role="img"></svg></div>
+      <form class="card" id="weight-form" novalidate>
+        <h2>Log</h2>
+        <div class="form-row">
+          <div class="field"><label for="w-kg">Weight (kg)</label><input class="input" id="w-kg" type="number" inputmode="decimal" step="0.1" min="30" max="250" placeholder="e.g. 72.8"></div>
+          <div class="field"><label for="w-waist">Waist (cm), monthly</label><input class="input" id="w-waist" type="number" inputmode="decimal" step="0.5" min="40" max="200" placeholder="e.g. 85"></div>
+          <button class="btn btn-inline" type="submit">Save</button>
+        </div>
+        <p class="msg-line" id="weight-msg" role="status"></p>
+      </form>
+    </section>
+
+    <!-- ================= Workouts ================= -->
+    <section class="view" id="view-workouts" hidden>
+      <header class="view-head">
+        <div><h1>Workouts</h1><p class="sub">Type and minutes. Steps alone don't tell the whole story.</p></div>
+      </header>
+      <div class="stats" id="wo-stats"></div>
+      <div class="card"><h2>Minutes this week</h2><svg class="chart" id="chart-wo" role="img"></svg></div>
+      <form class="card" id="wo-form" novalidate>
+        <h2>Log a workout</h2>
+        <div class="chips" id="wo-types" role="group" aria-label="Workout type"></div>
+        <div class="form-row">
+          <div class="field"><label for="wo-min">Minutes</label><input class="input" id="wo-min" type="number" inputmode="numeric" min="1" max="600" placeholder="e.g. 30"></div>
+          <button class="btn btn-inline" type="submit">Add workout</button>
+        </div>
+        <p class="msg-line" id="wo-msg" role="status"></p>
+      </form>
+      <div class="card"><h2>This week</h2><div class="rows" id="wo-list"></div></div>
+    </section>
+
+    <!-- ================= Menstrual cycle ================= -->
+    <section class="view" id="view-cycle" hidden>
+      <header class="view-head">
+        <div><h1>Menstrual cycle</h1><p class="sub">Log your period and learn what each phase means.</p></div>
+      </header>
+      <div class="stats" id="cycle-stats"></div>
+      <div class="cycle-grid">
+      <div class="card">
+        <div class="cal-head">
+          <button class="icon-btn" id="cal-prev" type="button" aria-label="Previous month">‹</button>
+          <h2 id="cal-title" aria-live="polite"></h2>
+          <button class="icon-btn" id="cal-next" type="button" aria-label="Next month">›</button>
+        </div>
+        <div class="cal" id="cal"></div>
+        <div class="flow-legend">
+          <span><i class="swatch spotting"></i>Spotting</span><span><i class="swatch light"></i>Light</span>
+          <span><i class="swatch medium"></i>Medium</span><span><i class="swatch heavy"></i>Heavy</span>
+        </div>
+        <div class="day-sheet" id="day-sheet" hidden>
+          <h3 id="ds-title"></h3>
+          <div class="chips" id="ds-chips" role="group" aria-label="Flow for this day"></div>
+        </div>
+        <div style="margin-top:14px"><button class="btn btn-inline" id="log-today" type="button">Log today's flow</button></div>
+        <p class="fine" style="margin-top:12px">Because PCOS cycles can be irregular, Pulse doesn't predict your next period or fertile days.</p>
+      </div>
+
+      <div>
+      <h2 class="sec-h" style="margin-top:0;margin-bottom:10px">Understand your cycle</h2>
+      <div class="learn-list">
+        <details class="learn">
+          <summary><span>Menstrual phase<span class="tagline-sm">The bleed · usually days 1–5</span></span></summary>
+          <div class="body">
+            <p>The uterine lining sheds, which is your period. Estrogen and progesterone are at their lowest.</p>
+            <p>Cramps, tiredness and a low mood are common. For many people energy starts to come back towards the end. A period usually lasts 2–7 days.</p>
+          </div>
+        </details>
+        <details class="learn">
+          <summary><span>Follicular phase<span class="tagline-sm">Building up · from day 1 until ovulation</span></span></summary>
+          <div class="body">
+            <p>Your brain signals the ovaries to grow follicles, each holding an egg, and estrogen rises. Many people notice more energy, a clearer head and a better mood.</p>
+            <p>With PCOS, follicles often stall instead of maturing, which is one reason this phase can run long.</p>
+          </div>
+        </details>
+        <details class="learn">
+          <summary><span>Ovulation<span class="tagline-sm">Egg release · roughly mid-cycle</span></span></summary>
+          <div class="body">
+            <p>One follicle releases an egg, typically around the middle of a 28-day cycle. Some people notice clear, stretchy discharge or a mild one-sided twinge.</p>
+            <p>With PCOS, ovulation can be infrequent or skipped, so you can't assume a day. Pulse doesn't try to predict it.</p>
+          </div>
+        </details>
+        <details class="learn">
+          <summary><span>Luteal phase<span class="tagline-sm">The wind-down · usually 12–14 days</span></span></summary>
+          <div class="body">
+            <p>After ovulation, progesterone rises to prepare the lining. If there is no pregnancy, hormones drop and the next period begins.</p>
+            <p>In the days before a period, some people get bloating, breast tenderness, cravings, poorer sleep or mood dips. This is often called PMS.</p>
+          </div>
+        </details>
+        <details class="learn">
+          <summary><span>Flow levels<span class="tagline-sm">From spotting to heavy</span></span></summary>
+          <div class="body">
+            <p><strong>Spotting:</strong> a few drops, not enough to need a pad. <strong>Light:</strong> a pad or tampon a few times a day, only partly soaked.</p>
+            <p><strong>Medium:</strong> a regular pad or tampon fills over several hours. <strong>Heavy:</strong> it fills quickly, or you wake at night to change it.</p>
+            <p>Soaking through a pad or tampon every hour for several hours is worth raising with a doctor promptly.</p>
+          </div>
+        </details>
+        <details class="learn">
+          <summary><span>Cycle length<span class="tagline-sm">How it is counted</span></span></summary>
+          <div class="body">
+            <p>A cycle runs from the first day of one period to the first day of the next. 21–35 days is the typical range for adults.</p>
+            <p>Cycles outside that range, or very unpredictable ones, are worth discussing with your doctor. A log like this makes that conversation easier.</p>
+          </div>
+        </details>
+      </div>
+      </div>
+      </div>
+    </section>
+
+    <!-- ================= Symptoms & tags ================= -->
+    <section class="view" id="view-symptoms" hidden>
+      <header class="view-head">
+        <div><h1>Symptoms &amp; tags</h1><p class="sub" id="sym-sub">Tap what applies today.</p></div>
+      </header>
+      <form class="card" id="sym-form" novalidate>
+        <h2>Symptoms today</h2>
+        <div class="chips" id="sym-chips" role="group" aria-label="Symptoms"></div>
+        <h2 style="margin-top:20px">Tag your day</h2>
+        <p class="fine">Context helps us show what moves with what.</p>
+        <div class="chips" id="tag-chips" role="group" aria-label="Day tags"></div>
+        <div style="margin-top:16px"><button class="btn btn-inline" type="submit">Save today</button></div>
+        <p class="msg-line" id="sym-msg" role="status"></p>
+      </form>
+      <div class="card"><h2>Recent days</h2><div class="rows" id="sym-list"></div></div>
+    </section>
+
+    <!-- ================= Meals ================= -->
+    <section class="view" id="view-meals" hidden>
+      <header class="view-head">
+        <div><h1>Meals</h1><p class="sub">What, when and where. No calorie counting.</p></div>
+      </header>
+      <div class="stats" id="meal-stats"></div>
+      <form class="card" id="meal-form" novalidate>
+        <h2>Add a meal</h2>
+        <div class="form-row">
+          <div class="field"><label for="meal-type">Meal</label>
+            <select class="input" id="meal-type"><option>Breakfast</option><option>Lunch</option><option>Snack</option><option>Dinner</option></select></div>
+          <div class="field"><label for="meal-time">Time</label><input class="input" id="meal-time" type="time" required></div>
+        </div>
+        <p class="fine" style="margin-top:14px">Where from?</p>
+        <div class="chips" id="meal-src" role="group" aria-label="Where the meal came from"></div>
+        <div class="field" style="margin-top:14px"><label for="meal-text">What did you eat?</label>
+          <input class="input" id="meal-text" type="text" maxlength="120" placeholder="e.g. poha with peanuts"></div>
+        <div class="chips" id="meal-quick" aria-label="Quick add"></div>
+        <div style="margin-top:16px"><button class="btn btn-inline" type="submit">Add meal</button></div>
+        <p class="msg-line" id="meal-msg" role="status"></p>
+      </form>
+      <div class="card"><h2>Today</h2><div class="rows" id="meal-list"></div></div>
+    </section>
+
+    <!-- ================= Medication ================= -->
+    <section class="view" id="view-meds" hidden>
+      <header class="view-head">
+        <div><h1>Medication</h1><p class="sub">You add what your doctor prescribed. Pulse never suggests or changes medicines.</p></div>
+      </header>
+      <div class="card"><h2>Today</h2><div class="rows" id="med-list"></div></div>
+      <form class="card" id="med-form" novalidate>
+        <h2>Add a medicine or supplement</h2>
+        <div class="form-row">
+          <div class="field"><label for="med-name">Name</label><input class="input" id="med-name" type="text" maxlength="60" placeholder="As on your prescription"></div>
+          <div class="field"><label for="med-dose">Dose and timing</label><input class="input" id="med-dose" type="text" maxlength="60" placeholder="e.g. 500 mg, after dinner"></div>
+          <button class="btn btn-inline" type="submit">Add</button>
+        </div>
+        <p class="msg-line" id="med-msg" role="status"></p>
+      </form>
+    </section>
+
+    <!-- ================= Stress & anxiety ================= -->
+    <section class="view" id="view-stress" hidden>
+      <header class="view-head">
+        <div><h1>Stress &amp; anxiety</h1><p class="sub">A quick daily rating, plus two short check-ins every few weeks.</p></div>
+      </header>
+      <div id="stress-home" class="stack-grid">
+        <div class="card">
+          <h2>How stressed do you feel today?</h2>
+          <div class="chips" id="stress-chips" role="group" aria-label="Stress today"></div>
+          <p class="msg-line" id="stress-msg" role="status"></p>
+        </div>
+        <div class="card">
+          <h2>Check-ins</h2>
+          <p class="fine">Standard questionnaires used by doctors. They are screening tools, not a diagnosis.</p>
+          <div class="rows" id="q-list"></div>
+        </div>
+      </div>
+      <div id="q-run" class="card" hidden></div>
+    </section>
+
+    <!-- ================= Journal (chat) ================= -->
+    <section class="view" id="view-journal" hidden>
+      <div class="chat">
+        <div class="chat-top">
+          <div><h1>Journal</h1><p>An AI that only asks questions. It can't give advice.</p></div>
+          <button class="btn-ghost" id="new-chat" type="button">New chat</button>
+        </div>
+        <div class="msgs" id="msgs" aria-live="polite"></div>
+        <div class="composer">
+          <form id="chat-form" novalidate>
+            <label class="visually-hidden" for="chat-in">Write a message</label>
+            <textarea id="chat-in" rows="1" maxlength="2000" placeholder="Say what's on your mind…"></textarea>
+            <button class="send" id="chat-send" type="submit" aria-label="Send">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            </button>
+          </form>
+          <p class="fine">AI, not a therapist. This chat isn't saved in the prototype.</p>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="tracker.js"></script>
+</body>
+</html>
