@@ -1,7 +1,8 @@
 """Calculations from a person's own data: Health Factor, patterns and the pre-visit summary.
 
-The Health Factor (v0) blends validated and tracked signals. It is a summary for the person and their doctor,
-not a diagnosis. Weights are written down here so they can be defended and changed in one place.
+The Health Factor (v0) blends validated and tracked signals. The mind side uses only validated questionnaires
+(PHQ-9 and GAD-7): the daily mood check-in is self-rated, so it is kept out of the score. It is a summary for the person
+and their doctor, not a diagnosis. Weights are written down here so they can be defended and changed in one place.
 """
 import json
 import math
@@ -9,7 +10,7 @@ from datetime import date, timedelta
 
 from server import defs, store
 
-W_MIND = {"mood": 0.40, "phq9": 0.35, "gad7": 0.25}
+W_MIND = {"phq9": 0.60, "gad7": 0.40}
 W_BODY = {"sleep": 0.35, "activity": 0.35, "cycle": 0.30}
 W_TOP = {"mind": 0.5, "body": 0.5}
 
@@ -78,10 +79,9 @@ def period_starts(conn, uid):
 def hf(ctx, day):
     win = [(day - timedelta(days=i)).isoformat() for i in range(6, -1, -1)]
     rows = [ctx.daily.get(k) for k in win]
-    moods = [r["mood"] for r in rows if r and r["mood"] is not None]
     sleeps = [r["sleep_min"] / 60 for r in rows if r and r["sleep_min"] is not None]
     steps = [r["steps"] for r in rows if r and r["steps"] is not None]
-    parts = {"mood": ((_mean(moods) - 1) / 4 * 100) if moods else None}
+    parts = {}
     for kind in ("phq9", "gad7"):
         score = ctx.latest_q(kind, day)
         parts[kind] = None if score is None else 100 * (1 - score / defs.QUESTIONNAIRES[kind]["max"])

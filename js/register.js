@@ -352,7 +352,7 @@
       '<div class="bcell"><div class="k">Height</div><div class="v">' + esc(S.body.height_cm || '–') + ' <i>cm</i></div></div>' +
       '<div class="bcell"><div class="k">PHQ-9</div><div class="v">' + (p ? p.score + ' <i>/ 27</i>' : '<i>skipped</i>') + '</div></div>' +
       '<div class="bcell"><div class="k">GAD-7</div><div class="v">' + (g ? g.score + ' <i>/ 21</i>' : '<i>skipped</i>') + '</div></div></div>' +
-      '<div class="sub-block"><strong>What happens next</strong><p class="why" style="margin:0">Tell Pulse how you feel each day. After a few days it starts showing patterns, and your Health Factor builds from what you log, like your mood, sleep and steps.</p></div>' +
+      '<div class="sub-block"><strong>What happens next</strong><p class="why" style="margin:0">Tell Pulse how you feel each day. After a few days it starts showing patterns. Your Health Factor builds from your PHQ-9 and GAD-7 scores, plus the sleep, steps and cycle you log.</p></div>' +
       '<div class="nav-row"><a class="btn" href="/user.html">Go to my dashboard</a></div>');
   }
 
