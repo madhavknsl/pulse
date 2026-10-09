@@ -3,9 +3,9 @@
   "configurations": [
     {
       "name": "pulse",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": ["server/app.py"],
-      "port": 8000
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["PULSE_PORT=8001", "python3", "server/app.py"],
+      "port": 8001
     }
   ]
 }

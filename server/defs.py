@@ -9,13 +9,13 @@ LANGUAGES = ["English", "हिन्दी (Hindi)", "ಕನ್ನಡ (Kannada)
 SHARE_KEYS = ["profile", "mood", "sleep", "activity", "cycle", "weight", "meals", "meds", "labs"]
 EXPIRY = ["Until I stop it", "30 days", "90 days"]
 SHARE_LABELS = {
-    "profile": "Basic details & health background", "mood": "Mood, stress & questionnaires", "sleep": "Sleep, heart rate & SpO₂",
+    "profile": "Basic details & health background", "mood": "Mood, stress & questionnaires", "sleep": "Sleep",
     "activity": "Steps & workouts", "cycle": "Cycle & symptoms", "weight": "Weight & waist", "meals": "Meals",
     "meds": "Medication log", "labs": "Lab reports",
 }
 
 # Explicit consent, one per kind of data (DPDP-style: separate, specific, withdrawable).
-CONSENT_KINDS = ["terms", "health_basics", "mental_health", "cycle_symptoms", "wearable", "meals_meds", "ai_journal"]
+CONSENT_KINDS = ["terms", "health_basics", "mental_health", "cycle_symptoms", "sleep_activity", "meals_meds", "ai_journal"]
 CONSENT_REQUIRED = ["terms", "health_basics"]
 CONSENT_VERSION = "v1"
 
@@ -23,7 +23,7 @@ CONSENT_VERSION = "v1"
 QUESTIONNAIRES = {"phq9": {"items": 9, "max": 27}, "gad7": {"items": 7, "max": 21}}
 
 # Onboarding offers only what fits the launch beachhead. Everything else is shown as "coming soon".
-LIFESTYLE_AVAILABLE = ["irregular_sleep", "work_stress", "desk_job", "orders_food", "uses_wearable", "prefers_privacy"]
+LIFESTYLE_AVAILABLE = ["irregular_sleep", "work_stress", "desk_job", "orders_food", "prefers_privacy"]
 STRESS_SOURCES_AVAILABLE = ["Work pressure", "Health worries"]
 STRESS_DURATIONS = ["Less than a month", "1 to 6 months", "More than 6 months"]
 PCOS_STATUS = ["Diagnosed by a doctor", "I think I may have it"]
@@ -61,6 +61,5 @@ DEFAULT_NOTIFICATIONS = {
     "data": True, "weekly": True, "neutral": True,
 }
 DEFAULT_GOALS = {"sleep_h": 7, "steps": 7000, "weight_kg": None}
-DEFAULT_DEVICE = {"connected": False, "last_sync": None, "perms": {"steps": True, "hr": True, "spo2": True, "sleep": True}}
 DEFAULT_PLAN = {"price": 399, "status": "active", "renews": None, "method": "UPI"}
 DEFAULT_UI = {"hide_numbers": False, "show_bmi": False}

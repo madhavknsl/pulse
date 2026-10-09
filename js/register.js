@@ -13,7 +13,6 @@
     work_stress: ['My work is high-pressure', 'Deadlines, long hours or constant pings'],
     desk_job: ['I mostly sit at a desk', 'Most of my day is spent sitting'],
     orders_food: ['I order food in 4 to 5 times a week', 'Delivery or eating out is a regular part of my week'],
-    uses_wearable: ['I use a smartwatch or fitness band', 'So Pulse can read steps, sleep and heart rate (with your permission)'],
     prefers_privacy: ['I prefer to keep my condition private', 'Notifications and screens stay discreet']
   };
   var SOON_LIFESTYLE = ['Night shifts', 'Caring for children or elders', 'Studying full-time', 'Smoking or alcohol', 'Travelling often', 'Fasting for religious reasons'];
@@ -353,7 +352,7 @@
       '<div class="bcell"><div class="k">Height</div><div class="v">' + esc(S.body.height_cm || '–') + ' <i>cm</i></div></div>' +
       '<div class="bcell"><div class="k">PHQ-9</div><div class="v">' + (p ? p.score + ' <i>/ 27</i>' : '<i>skipped</i>') + '</div></div>' +
       '<div class="bcell"><div class="k">GAD-7</div><div class="v">' + (g ? g.score + ' <i>/ 21</i>' : '<i>skipped</i>') + '</div></div></div>' +
-      '<div class="sub-block"><strong>What happens next</strong><p class="why" style="margin:0">Tell Pulse how you feel each day. After a few days it starts showing patterns, and your Health Factor builds from what you log. Connect a watch any time from your profile.</p></div>' +
+      '<div class="sub-block"><strong>What happens next</strong><p class="why" style="margin:0">Tell Pulse how you feel each day. After a few days it starts showing patterns, and your Health Factor builds from what you log, like your mood, sleep and steps.</p></div>' +
       '<div class="nav-row"><a class="btn" href="/user.html">Go to my dashboard</a></div>');
   }
 

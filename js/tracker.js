@@ -31,8 +31,6 @@
   var ICON = {
     grid: '<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
     walk: '<circle cx="13" cy="4.5" r="1.8"/><path d="M9 21l2.5-6 3 2v4M11.5 15l1-5.5M7 12l3-3 3.5 1.5 2.5 3"/>',
-    heart: '<path d="M12 20s-7.5-4.6-9.5-9.2C1.2 7.6 3.3 4.5 6.5 4.5c2 0 3.5 1 5.5 3 2-2 3.5-3 5.5-3 3.2 0 5.3 3.1 4 6.3C19.5 15.4 12 20 12 20z"/>',
-    drop: '<path d="M12 3s6 6.2 6 11a6 6 0 0 1-12 0c0-4.8 6-11 6-11z"/>',
     moon: '<path d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/>',
     scale: '<rect x="3" y="4" width="18" height="16" rx="4"/><path d="M8.5 9.5a5 5 0 0 1 7 0M12 13l2-2.5"/>',
     dumbbell: '<path d="M6.5 6.5v11M17.5 6.5v11M3.5 9v6M20.5 9v6M6.5 12h11"/>',
@@ -52,8 +50,6 @@
     { id: 'overview', label: 'Overview', icon: 'grid' },
     { group: 'Body' },
     { id: 'steps', label: 'Steps', icon: 'walk' },
-    { id: 'heart', label: 'Heart rate', icon: 'heart' },
-    { id: 'spo2', label: 'SpO₂', icon: 'drop' },
     { id: 'sleep', label: 'Sleep', icon: 'moon' },
     { id: 'weight', label: 'Weight', icon: 'scale' },
     { id: 'workouts', label: 'Workouts', icon: 'dumbbell' },
@@ -81,17 +77,17 @@
   /* ---------- data from the server (30 days, oldest first; the last item is today) ---------- */
   var P = window.Pulse;
   var N = 30, STEP_GOAL = 7000, SLEEP_GOAL = 7;
-  var dates = [], steps = [], rhr = [], hrv = [], spo2 = [], spo2min = [], bedtime = [], sleepMin = [];
+  var dates = [], steps = [], bedtime = [], sleepMin = [];
 
   var state = {
-    ranges: { steps: 7, heart: 7, spo2: 7, sleep: 7 },
+    ranges: { steps: 7, sleep: 7 },
     weights: [], waist: null, goalWeight: null, hideWeight: false, ui: { hide_numbers: false, show_bmi: false },
     workouts: [], woType: null,
     period: {}, calMonth: new Date(today.getFullYear(), today.getMonth(), 1), selDate: null,
     symSel: {}, tagSel: {}, symDirty: false, symLog: [],
     weekMeals: [], meals: [], mealSrc: null,
     meds: [], stress: null, qHistory: { phq9: [], gad7: [] },
-    device: { connected: false }, consents: {}, name: 'there'
+    consents: {}, name: 'there'
   };
 
   function ingest(d) {
@@ -99,10 +95,6 @@
     N = days.length;
     dates = days.map(function (r) { return parseKey(r.date); });
     steps = days.map(function (r) { return r.steps; });
-    rhr = days.map(function (r) { return r.rhr; });
-    hrv = days.map(function (r) { return r.hrv; });
-    spo2 = days.map(function (r) { return r.spo2_avg; });
-    spo2min = days.map(function (r) { return r.spo2_min; });
     bedtime = days.map(function (r) { return r.bed_min; });
     sleepMin = days.map(function (r) { return r.sleep_min; });
     STEP_GOAL = d.goals.steps || 7000; SLEEP_GOAL = d.goals.sleep_h || 7; state.goalWeight = d.goals.weight_kg;
@@ -122,7 +114,7 @@
     state.meds = d.meds;
     state.stress = days[N - 1].stress || null;
     state.qHistory = d.questionnaires;
-    state.device = d.device; state.consents = d.consents; state.name = d.user.preferred_name;
+    state.consents = d.consents; state.name = d.user.preferred_name;
   }
   function refresh() {
     return P.get('/api/tracker').then(function (d) { ingest(d); if (typeof current !== 'undefined' && RENDER[current]) RENDER[current](); });
@@ -241,7 +233,7 @@
     else { svgEl.setAttribute('hidden', ''); note.hidden = false; note.innerHTML = msg; }
     return ok;
   }
-  var NEED_WATCH = 'No readings yet. <a href="profile.html#devices">Connect the demo watch</a> in your profile to see this.';
+  var NO_STEPS = 'No steps added yet. Add a day below.';
 
   function labelsFor(n) {
     var out = [];
@@ -263,10 +255,8 @@
     var starts = periodStarts(), cd = cycleDayOn(today), lastW = state.weights.length ? state.weights[state.weights.length - 1].kg : null;
     var nSym = Object.keys(state.symSel).length, last = N - 1;
     var T = [
-      { id: 'steps', icon: 'walk', label: 'Steps', val: steps[last] == null ? '–' : num(steps[last]), sub: 'of ' + num(STEP_GOAL) + ' goal' },
-      { id: 'heart', icon: 'heart', label: 'Resting heart rate', val: rhr[last] == null ? '–' : rhr[last] + ' bpm', sub: hrv[last] == null ? 'No reading yet' : 'HRV ' + hrv[last] + ' ms' },
-      { id: 'spo2', icon: 'drop', label: 'SpO₂ last night', val: spo2[last] == null ? '–' : spo2[last].toFixed(1) + '%', sub: spo2min[last] == null ? 'No reading yet' : 'Lowest ' + spo2min[last] + '%' },
-      { id: 'sleep', icon: 'moon', label: 'Sleep', val: sleepMin[last] == null ? '–' : fmtDur(sleepMin[last]), sub: bedtime[last] == null ? 'Not logged yet' : 'Bed ' + fmtClock(bedtime[last]) },
+      { id: 'steps', icon: 'walk', label: 'Steps', val: steps[last] == null ? '–' : num(steps[last]), sub: steps[last] == null ? 'Tap to add' : 'of ' + num(STEP_GOAL) + ' goal' },
+      { id: 'sleep', icon: 'moon', label: 'Sleep', val: sleepMin[last] == null ? '–' : fmtDur(sleepMin[last]), sub: bedtime[last] == null ? 'Tap to add' : 'Bed ' + fmtClock(bedtime[last]) },
       { id: 'weight', icon: 'scale', label: 'Weight', val: lastW == null ? '–' : (state.hideWeight ? '•••' : lastW.toFixed(1) + ' kg'), sub: 'Weekly check-in' },
       { id: 'workouts', icon: 'dumbbell', label: 'Workouts', val: wk.length + ' this week', sub: sum(wk.map(function (w) { return w.min; })) + ' minutes' },
       { id: 'cycle', icon: 'calendar', label: 'Cycle', val: cd ? 'Day ' + cd : '–', sub: starts.length ? 'Last period ' + fmtDate(starts[starts.length - 1]) : 'No period logged' },
@@ -279,52 +269,32 @@
     $('#tiles').innerHTML = T.map(function (t) {
       return '<a class="tile" href="#' + t.id + '"><span class="t-head">' + svg(t.icon) + esc(t.label) + '</span><span class="t-val">' + esc(t.val) + '</span><span class="t-sub">' + esc(t.sub) + '</span></a>';
     }).join('');
-    var chip = document.querySelector('#view-overview .sync-chip');
-    if (chip) chip.innerHTML = state.device.connected ? '<i></i>Demo watch connected · readings are simulated' : '<i style="background:#9fb0cc"></i>No watch connected';
   };
 
+  function dayFields(ids) {
+    ids.forEach(function (id) {
+      var el = $(id); el.max = key(today); el.min = key(addDays(today, -29)); if (!el.value) el.value = key(today);
+    });
+  }
+
   RENDER.steps = function () {
+    dayFields(['#steps-date']);
     var n = state.ranges.steps, v = steps[N - 1], last = steps.slice(-n), got = nums(last);
     $('#steps-big').textContent = v == null ? '–' : num(v);
-    $('#steps-goal').textContent = 'of ' + num(STEP_GOAL) + ' goal so far today';
+    $('#steps-goal').textContent = 'of ' + num(STEP_GOAL) + ' goal today';
     $('#steps-bar').style.width = v == null ? '0%' : Math.min(100, v / STEP_GOAL * 100) + '%';
     $('#steps-stats').innerHTML = got.length ?
       stat('Average', num(Math.round(avgN(last))), 'a day', 'Last ' + n + ' days') +
       stat('Best day', num(Math.max.apply(null, got)), '', 'Last ' + n + ' days') +
       stat('Days at goal', got.filter(function (s) { return s >= STEP_GOAL; }).length + ' of ' + got.length, '', num(STEP_GOAL) + '+ steps') : '';
-    if (chartOrEmpty($('#chart-steps'), got.length > 0, NEED_WATCH)) {
+    if (chartOrEmpty($('#chart-steps'), got.length > 0, NO_STEPS)) {
       draw($('#chart-steps'), { type: 'bars', values: last, labels: labelsFor(n), goal: STEP_GOAL, goalLabel: 'Goal ' + num(STEP_GOAL), min: 0,
         aria: 'Daily steps for the last ' + n + ' days', tip: function (j) { return dayText(j, n) + ' · ' + num(last[j]) + ' steps'; } });
     }
   };
 
-  RENDER.heart = function () {
-    var n = state.ranges.heart, last = rhr.slice(-n), got = nums(last);
-    $('#hr-big').textContent = rhr[N - 1] == null ? '–' : rhr[N - 1];
-    $('#hr-stats').innerHTML = got.length ?
-      stat('Average', Math.round(avgN(last)), 'bpm', 'Last ' + n + ' days') +
-      stat('Lowest', Math.min.apply(null, got), 'bpm', 'Last ' + n + ' days') +
-      stat('HRV last night', hrv[N - 1] == null ? '–' : hrv[N - 1], hrv[N - 1] == null ? '' : 'ms', 'Beat-to-beat variation') : '';
-    if (chartOrEmpty($('#chart-hr'), got.length > 0, NEED_WATCH)) {
-      draw($('#chart-hr'), { type: 'line', values: last, labels: labelsFor(n), aria: 'Resting heart rate for the last ' + n + ' days',
-        tip: function (j) { return dayText(j, n) + ' · ' + last[j] + ' bpm'; } });
-    }
-  };
-
-  RENDER.spo2 = function () {
-    var n = state.ranges.spo2, last = spo2.slice(-n), got = nums(last), lows = nums(spo2min.slice(-n));
-    $('#spo-big').textContent = spo2[N - 1] == null ? '–' : spo2[N - 1].toFixed(1);
-    $('#spo-stats').innerHTML = got.length ?
-      stat('Average', avgN(last).toFixed(1), '%', 'Last ' + n + ' nights') +
-      stat('Lowest reading', lows.length ? Math.min.apply(null, lows) : '–', lows.length ? '%' : '', 'Last ' + n + ' nights') +
-      stat('Last night low', spo2min[N - 1] == null ? '–' : spo2min[N - 1], spo2min[N - 1] == null ? '' : '%', 'Overnight minimum') : '';
-    if (chartOrEmpty($('#chart-spo'), got.length > 0, NEED_WATCH)) {
-      draw($('#chart-spo'), { type: 'line', values: last, labels: labelsFor(n), min: 90, max: 100, step: 2, aria: 'Nightly average SpO2 for the last ' + n + ' nights',
-        tip: function (j) { return dayText(j, n) + ' · ' + last[j].toFixed(1) + '%'; } });
-    }
-  };
-
   RENDER.sleep = function () {
+    dayFields(['#sleep-date']);
     var n = state.ranges.sleep, mins = sleepMin.slice(-n), got = nums(mins), hours = mins.map(function (m) { return m == null ? null : Math.round(m / 6) / 10; });
     var weekBeds = nums(bedtime.slice(-7)), spread = weekBeds.length > 1 ? Math.max.apply(null, weekBeds) - Math.min.apply(null, weekBeds) : null;
     var last = N - 1;
@@ -334,7 +304,7 @@
       stat('Woke up', sleepMin[last] == null || bedtime[last] == null ? '–' : fmtClock(bedtime[last] + sleepMin[last])) +
       stat('Average', fmtDur(avgN(mins)), '', 'Last ' + n + ' nights') +
       stat('Bedtime varied by', spread == null ? '–' : fmtDur(spread), '', 'Last 7 nights') : '';
-    if (chartOrEmpty($('#chart-sleep'), got.length > 0, 'No sleep logged yet. Add last night below, or <a href="profile.html#devices">connect the demo watch</a>.')) {
+    if (chartOrEmpty($('#chart-sleep'), got.length > 0, 'No sleep added yet. Add a night below.')) {
       draw($('#chart-sleep'), { type: 'bars', values: hours, labels: labelsFor(n), goal: SLEEP_GOAL, goalLabel: SLEEP_GOAL + ' h goal', min: 0, max: 10, step: 2,
         aria: 'Hours slept for the last ' + n + ' nights', tip: function (j) { return dayText(j, n) + ' · ' + hours[j] + ' h'; } });
     }
@@ -666,11 +636,23 @@
 
   $('#sleep-form').addEventListener('submit', function (e) {
     e.preventDefault();
-    var bed = $('#bed').value, wake = $('#wake').value;
+    var bed = $('#bed').value, wake = $('#wake').value, day = $('#sleep-date').value;
+    if (!day) return setMsg('#sleep-msg', 'Pick the day you woke up.', true);
     if (!bed || !wake) return setMsg('#sleep-msg', 'Add both times.', true);
-    P.post('/api/tracker/sleep', { bed: bed, wake: wake }).then(function (r) {
-      return refresh().then(function () { setMsg('#sleep-msg', 'Saved: ' + fmtDur(r.sleep_min) + ' of sleep.'); });
+    P.post('/api/tracker/sleep', { date: day, bed: bed, wake: wake }).then(function (r) {
+      return refresh().then(function () { setMsg('#sleep-msg', 'Saved: ' + fmtDur(r.sleep_min) + ' of sleep for ' + fmtDate(parseKey(r.date)) + '.'); });
     }, failed('#sleep-msg'));
+  });
+
+  $('#steps-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var day = $('#steps-date').value, n = $('#steps-n').value.trim();
+    if (!day) return setMsg('#steps-msg', 'Pick the day.', true);
+    if (!/^\d+$/.test(n) || +n > 100000) return setMsg('#steps-msg', 'Enter your steps as a whole number, up to 100,000.', true);
+    P.post('/api/tracker/steps', { date: day, steps: +n }).then(function (r) {
+      $('#steps-n').value = '';
+      return refresh().then(function () { setMsg('#steps-msg', 'Saved: ' + num(r.steps) + ' steps for ' + fmtDate(parseKey(r.date)) + '.'); });
+    }, failed('#steps-msg'));
   });
 
   $('#hide-weight').addEventListener('change', function () {

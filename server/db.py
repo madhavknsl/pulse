@@ -1,4 +1,5 @@
 """SQLite storage. Everything lives in one local file under data/ (never committed)."""
+import json
 import os
 import sqlite3
 from pathlib import Path
@@ -7,7 +8,7 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA_DIR = Path(os.environ.get("PULSE_DATA", ROOT / "data"))
 UPLOAD_DIR = DATA_DIR / "uploads"
 DB_PATH = DATA_DIR / "pulse.db"
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 SCHEMA = """
 CREATE TABLE users (
@@ -48,7 +49,7 @@ CREATE TABLE consents (
   PRIMARY KEY (user_id, kind)
 );
 
--- Small per-user documents: health_background, goals, notifications, device, plan, ui, emergency
+-- Small per-user documents: health_background, goals, notifications, plan, ui, emergency
 CREATE TABLE user_settings (
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   key TEXT NOT NULL,
@@ -68,8 +69,7 @@ CREATE TABLE measurements (
 CREATE TABLE daily (
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   date TEXT NOT NULL,
-  steps INTEGER, rhr INTEGER, hrv INTEGER,
-  spo2_avg REAL, spo2_min REAL,
+  steps INTEGER,
   sleep_min INTEGER, bed_min INTEGER,
   mood INTEGER, mood_note TEXT, mood_at TEXT,
   stress INTEGER,
@@ -266,8 +266,27 @@ CREATE INDEX idx_journal_user ON journal_checks (user_id, created_at);
 CREATE INDEX idx_alerts_user ON alerts (user_id, created_at);
 """
 
-# Older databases are upgraded in place, one version at a time. The v2 tables are the second half of SCHEMA.
-MIGRATIONS = {1: SCHEMA.split("-- v2:", 1)[1].split("\n", 1)[1]}
+def _migrate_to_3(conn):
+    """Steps and sleep are typed in by the person; heart rate and SpO2 are no longer tracked."""
+    for col in ("rhr", "hrv", "spo2_avg", "spo2_min"):
+        try:
+            conn.execute(f"ALTER TABLE daily DROP COLUMN {col}")
+        except sqlite3.OperationalError:
+            pass   # already gone
+    conn.execute("DELETE FROM user_settings WHERE key = 'device'")
+    conn.execute("UPDATE OR IGNORE consents SET kind = 'sleep_activity' WHERE kind = 'wearable'")
+    conn.execute("DELETE FROM consents WHERE kind = 'wearable'")
+    for row in conn.execute("SELECT user_id, value FROM user_settings WHERE key = 'health_background'").fetchall():
+        hb = json.loads(row["value"])
+        if "uses_wearable" in (hb.get("lifestyle") or []):
+            hb["lifestyle"] = [k for k in hb["lifestyle"] if k != "uses_wearable"]
+            conn.execute("UPDATE user_settings SET value = ? WHERE user_id = ? AND key = 'health_background'",
+                         (json.dumps(hb, ensure_ascii=False), row["user_id"]))
+
+
+# Older databases are upgraded in place, one version at a time (a step takes version N to N + 1).
+# SQL text is run as a script; a function gets the connection and runs inside one transaction.
+MIGRATIONS = {1: SCHEMA.split("-- v2:", 1)[1].split("\n", 1)[1], 2: _migrate_to_3}
 
 
 def connect():
@@ -297,9 +316,20 @@ def init():
             raise SystemExit(f"Database schema version {version} is newer than this build supports.")
         else:
             while version < SCHEMA_VERSION:
-                conn.executescript(MIGRATIONS[version])
+                step = MIGRATIONS[version]
+                if callable(step):
+                    conn.execute("BEGIN IMMEDIATE")
+                    try:
+                        step(conn)
+                        conn.execute(f"PRAGMA user_version = {version + 1}")
+                        conn.execute("COMMIT")
+                    except Exception:
+                        conn.execute("ROLLBACK")
+                        raise
+                else:
+                    conn.executescript(step)
+                    conn.execute(f"PRAGMA user_version = {version + 1}")
                 version += 1
-                conn.execute(f"PRAGMA user_version = {version}")
     finally:
         conn.close()
 

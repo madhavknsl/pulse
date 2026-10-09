@@ -18,7 +18,7 @@
   function parseTs(s) { return s ? new Date(String(s).replace(' ', 'T')) : null; }
 
   /* ---------- state (filled from the server) ---------- */
-  var P = {}, N = null, D = null, PL = null, BASE = null, LINKS = [], EM = null, CONS = {};
+  var P = {}, N = null, PL = null, BASE = null, LINKS = [], EM = null, CONS = {};
   var S = { editing: null, hide: false, bmi: false, tmp: null, msg: '' };
 
   var SEX = ['Female', 'Male', 'Intersex', 'Prefer not to say'];
@@ -42,7 +42,6 @@
     P.conditions = h.conditions; P.allergies = h.allergies; P.noAllergies = h.no_allergies; P.family = h.family; P.familyNone = h.family_none;
     P.diet = h.diet; P.work = h.work; P.workNote = h.work_note || '';
     N = d.notifications;
-    D = { connected: d.device.connected, lastSync: parseTs(d.device.last_sync), perms: d.device.perms };
     PL = { price: d.plan.price, status: d.plan.status, renews: d.plan.renews ? parseKey(d.plan.renews) : null, method: d.plan.method, cancelAsk: false };
     S.hide = d.ui.hide_numbers; S.bmi = d.ui.show_bmi;
     BASE = d.baseline; LINKS = d.links; EM = d.emergency; CONS = d.consents;
@@ -234,21 +233,6 @@
       }).join('') + '</div><p class="msg-line" id="cons-msg" role="status"></p>';
   }
 
-  /* ---------- devices ---------- */
-  function ago(d) { if (!d) return 'never'; var m = Math.max(0, Math.round((Date.now() - d.getTime()) / 60000)); return m < 1 ? 'just now' : m === 1 ? '1 minute ago' : m < 60 ? m + ' minutes ago' : m < 1440 ? Math.round(m / 60) + ' hours ago' : Math.round(m / 1440) + ' days ago'; }
-  function renderDevices() {
-    var h = '<div class="item-top" style="margin-top:14px"><span class="avatar-lg avatar-md" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="7" y="6" width="10" height="12" rx="3"/><path d="M9 6l.6-3h4.8L15 6M9 18l.6 3h4.8l.6-3M12 10v2.5l1.5 1"/></svg></span>' +
-      '<div class="grow"><strong>Smartwatch (demo)</strong><span class="meta">' + (D.connected ? 'Connected · last sync ' + ago(D.lastSync) : 'Not connected') + '</span></div>' +
-      '<span class="st ' + (D.connected ? 'uploaded' : 'reviewed') + '">' + (D.connected ? 'Connected' : 'Off') + '</span></div>';
-    h += '<div class="btn-row">' + (D.connected ? '<button class="btn-outline-sm" type="button" id="d-sync">Sync now</button><button class="btn-danger-sm" type="button" id="d-off">Disconnect</button>' : '<button class="btn btn-inline btn-sm" type="button" id="d-on">Connect watch</button>') + '</div>';
-    h += '<p class="msg-line" id="d-msg" role="status">' + (S.msg === 'sync' ? 'Synced just now.' : '') + '</p>';
-    h += '<p class="fine" style="margin-top:6px">This is a demo watch: its readings are simulated, so you can see how Pulse works. Pulse only reads what you allow:</p><div>' +
-      [['steps', 'Steps'], ['hr', 'Heart rate'], ['spo2', 'SpO₂'], ['sleep', 'Sleep']].map(function (p) {
-        return '<label class="perm" style="cursor:pointer"><span class="grow"><strong>' + p[1] + '</strong></span><span class="switch"><input type="checkbox" data-perm="' + p[0] + '"' + (D.perms[p[0]] ? ' checked' : '') + (D.connected ? '' : ' disabled') + ' aria-label="Allow reading ' + p[1] + '"><span></span></span></label>';
-      }).join('') + '</div>';
-    $('#dev-body').innerHTML = h;
-  }
-
   /* ---------- plan ---------- */
   function renderPlan() {
     var cancelled = PL.status === 'cancelled';
@@ -277,14 +261,14 @@
 
   /* ---------- render ---------- */
   function renderAll() {
-    renderHero(); renderPersonal(); renderBody(); renderHealth(); renderBaseline(); renderNotif(); renderConsents(); renderDevices(); renderPlan(); renderCare();
+    renderHero(); renderPersonal(); renderBody(); renderHealth(); renderBaseline(); renderNotif(); renderConsents(); renderPlan(); renderCare();
     S.msg = '';
   }
   [['personal', 'Linked doctors see your name, age and sex. Your phone and email are never shared.'],
    ['body', 'Linked doctors see your height. Weight and waist follow your "Weight & waist" sharing choice.'],
    ['health', 'Shared with doctors you link, if you allow "Basic details & health background" in Healthcare.'],
    ['baseline', 'Follows your sharing choices for each type of data.'],
-   ['notif', 'Only you.'], ['cons', 'Only you.'], ['dev', 'Only you. Pulse reads only what you allow.'], ['plan', 'Only you.'], ['care', 'Managed in Healthcare.']
+   ['notif', 'Only you.'], ['cons', 'Only you.'], ['plan', 'Only you.'], ['care', 'Managed in Healthcare.']
   ].forEach(function (v) { var el = $('#vis-' + v[0]); if (el) el.innerHTML = LOCK + '<span>' + v[1] + '</span>'; });
 
   /* ---------- interactions ---------- */
@@ -361,18 +345,6 @@
     var body = {}; body[k] = e.target.checked;
     Pu.put('/api/consents', { consents: body }).then(function (r) { CONS = r.consents; setMsg('#cons-msg', e.target.checked ? 'Turned on.' : 'Turned off. Pulse will stop collecting this from now on.'); },
       function (er) { e.target.checked = !e.target.checked; setMsg('#cons-msg', er.message, true); });
-  });
-
-  $('#dev-body').addEventListener('click', function (e) {
-    var go = function (p) { return p.then(function () { return load(); }, function (er) { setMsg('#d-msg', er.message, true); }); };
-    if (e.target.closest('#d-sync')) Pu.post('/api/device/sync').then(function () { S.msg = 'sync'; return load(); }, function (er) { setMsg('#d-msg', er.message, true); });
-    else if (e.target.closest('#d-off')) go(Pu.post('/api/device/disconnect'));
-    else if (e.target.closest('#d-on')) go(Pu.post('/api/device/connect'));
-  });
-  $('#dev-body').addEventListener('change', function (e) {
-    var p = e.target.dataset.perm; if (!p) return;
-    D.perms[p] = e.target.checked;
-    Pu.put('/api/device/perms', { perms: D.perms }).catch(function (er) { e.target.checked = !e.target.checked; D.perms[p] = e.target.checked; setMsg('#d-msg', er.message, true); });
   });
 
   $('#plan-body').addEventListener('click', function (e) {

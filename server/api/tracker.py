@@ -1,4 +1,4 @@
-"""Everything the tracker logs: watch metrics, sleep, weight, workouts, cycle, symptoms, meals, medicines, stress."""
+"""Everything the tracker logs: steps and sleep (typed in by the person), weight, workouts, cycle, symptoms, meals, medicines, stress."""
 import json
 from datetime import date, timedelta
 
@@ -21,7 +21,7 @@ def tracker(req):
         k = _day(i)
         r = rows.get(k)
         daily.append({"date": k, **{c: (r[c] if r else None) for c in
-                                    ("steps", "rhr", "hrv", "spo2_avg", "spo2_min", "sleep_min", "bed_min", "mood", "stress")}})
+                                    ("steps", "sleep_min", "bed_min", "mood", "stress")}})
     weights = [dict(r) for r in conn.execute(
         "SELECT date, value FROM (SELECT date, value FROM measurements WHERE user_id = ? AND kind = 'weight' ORDER BY date DESC LIMIT 12) ORDER BY date", (uid,))]
     waist = store.latest_measurement(conn, uid, "waist")
@@ -50,30 +50,51 @@ def tracker(req):
         "questionnaires": qh,
         "goals": store.goals(conn, uid),
         "ui": store.get_setting(conn, uid, "ui", defs.DEFAULT_UI),
-        "device": store.get_setting(conn, uid, "device", defs.DEFAULT_DEVICE),
         "consents": store.consents(conn, uid),
         "user": {"preferred_name": req.user["preferred_name"] or req.user["first_name"]},
     }
 
 
-def _upsert_daily(conn, uid, **cols):
-    conn.execute("INSERT OR IGNORE INTO daily (user_id, date) VALUES (?,?)", (uid, today_str()))
+def _entry_day(d):
+    """The day an entry is for: today unless a day in the last 30 days is given."""
+    day = ymd(d.get("date") or today_str(), not_future=True)
+    if (date.today() - day).days > 29:
+        raise bad("Pick a day in the last 30 days.", "date")
+    return day.isoformat()
+
+
+def _upsert_daily(conn, uid, day, **cols):
+    conn.execute("INSERT OR IGNORE INTO daily (user_id, date) VALUES (?,?)", (uid, day))
     sets = ", ".join(f"{k} = ?" for k in cols)
-    conn.execute(f"UPDATE daily SET {sets} WHERE user_id = ? AND date = ?", (*cols.values(), uid, today_str()))
+    conn.execute(f"UPDATE daily SET {sets} WHERE user_id = ? AND date = ?", (*cols.values(), uid, day))
 
 
-# ---------- sleep, weight, workouts ----------
+# ---------- steps, sleep, weight, workouts (typed in by the person) ----------
+@route("POST", "/api/tracker/steps")
+def log_steps(req):
+    d, conn, uid = req.json(), req.conn, req.user["id"]
+    store.require_consent(conn, uid, "sleep_activity")
+    day = _entry_day(d)
+    steps = number(d.get("steps"), "steps", 0, 100000, integer=True)
+    if float(d["steps"]) != steps:
+        raise bad("Enter a whole number of steps.", "steps")
+    _upsert_daily(conn, uid, day, steps=steps)
+    return {"date": day, "steps": steps}
+
+
 @route("POST", "/api/tracker/sleep")
 def log_sleep(req):
+    """The night that ended on `date` (today if left out)."""
     d, conn, uid = req.json(), req.conn, req.user["id"]
-    store.require_consent(conn, uid, "wearable")
+    store.require_consent(conn, uid, "sleep_activity")
+    day = _entry_day(d)
     bed, wake = hhmm(d.get("bed"), "bed"), hhmm(d.get("wake"), "wake")
     b, w = int(bed[:2]) * 60 + int(bed[3:]), int(wake[:2]) * 60 + int(wake[3:])
     dur = (w - b + 1440) % 1440
     if dur == 0:
         raise bad("Bedtime and wake time can't be the same.", "wake")
-    _upsert_daily(conn, uid, sleep_min=dur, bed_min=b - 1440 if b >= 18 * 60 else b)
-    return {"sleep_min": dur}
+    _upsert_daily(conn, uid, day, sleep_min=dur, bed_min=b - 1440 if b >= 18 * 60 else b)
+    return {"date": day, "sleep_min": dur}
 
 
 @route("POST", "/api/tracker/weight")
@@ -94,7 +115,7 @@ def log_weight(req):
 @route("POST", "/api/tracker/workouts")
 def add_workout(req):
     d, conn, uid = req.json(), req.conn, req.user["id"]
-    store.require_consent(conn, uid, "wearable")
+    store.require_consent(conn, uid, "sleep_activity")
     t = one_of(d.get("type"), "type", defs.WORKOUT_TYPES)
     m = number(d.get("minutes"), "minutes", 1, 600, integer=True)
     cur = conn.execute("INSERT INTO workouts (user_id, date, type, minutes) VALUES (?,?,?,?)", (uid, today_str(), t, m))
@@ -191,7 +212,7 @@ def put_stress(req):
     conn, uid = req.conn, req.user["id"]
     store.require_consent(conn, uid, "mental_health")
     v = number(req.json().get("value"), "value", 1, 5, integer=True, required=False)
-    _upsert_daily(conn, uid, stress=v)
+    _upsert_daily(conn, uid, today_str(), stress=v)
     return {"value": v}
 
 

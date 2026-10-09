@@ -1,8 +1,6 @@
-"""Profile, settings, photo and file uploads, the (simulated) watch, plan and emergency contact."""
-import json
-import random
+"""Profile, settings, photo and file uploads, plan and emergency contact."""
 import secrets
-from datetime import date, datetime, timedelta
+from datetime import date
 from pathlib import Path
 from urllib.parse import unquote
 
@@ -33,7 +31,6 @@ def get_profile(req):
         "consents": consent_view(conn, uid),
         "baseline": base,
         "notifications": store.get_setting(conn, uid, "notifications", defs.DEFAULT_NOTIFICATIONS),
-        "device": store.get_setting(conn, uid, "device", defs.DEFAULT_DEVICE),
         "plan": store.get_setting(conn, uid, "plan", defs.DEFAULT_PLAN),
         "ui": store.get_setting(conn, uid, "ui", defs.DEFAULT_UI),
         "goals": store.goals(conn, uid),
@@ -174,83 +171,6 @@ def put_emergency(req):
 def delete_emergency(req):
     req.conn.execute("DELETE FROM user_settings WHERE user_id = ? AND key = 'emergency'", (req.user["id"],))
     return None
-
-
-# ---------- the (simulated) watch ----------
-def _simulate_day(uid, d, today_fraction=1.0):
-    r = random.Random(f"{uid}:{d.isoformat()}")
-    weekend = d.weekday() >= 5
-    steps = max(900, int(r.gauss(5800 + (900 if weekend else 0), 1200) * today_fraction))
-    return {"steps": int(round(steps / 10) * 10), "rhr": int(round(r.gauss(75, 2))), "hrv": int(round(r.gauss(40, 4))),
-            "spo2_avg": round(_clip(r.gauss(96, 0.5), 94, 99), 1), "spo2_min": int(round(_clip(r.gauss(93, 1), 88, 96))),
-            "sleep_min": int(round(_clip(r.gauss(6.2, 0.7), 4, 9) * 60)), "bed_min": int(round(r.gauss(40, 45)))}
-
-
-def _clip(v, lo, hi):
-    return max(lo, min(hi, v))
-
-
-@route("POST", "/api/device/connect")
-def device_connect(req):
-    store.require_consent(req.conn, req.user["id"], "wearable")
-    dev = store.get_setting(req.conn, req.user["id"], "device", defs.DEFAULT_DEVICE)
-    dev["connected"] = True
-    store.set_setting(req.conn, req.user["id"], "device", dev)
-    return _sync(req, dev)
-
-
-@route("POST", "/api/device/disconnect")
-def device_disconnect(req):
-    dev = store.get_setting(req.conn, req.user["id"], "device", defs.DEFAULT_DEVICE)
-    dev["connected"] = False
-    store.set_setting(req.conn, req.user["id"], "device", dev)
-    return {"device": dev}
-
-
-@route("PUT", "/api/device/perms")
-def device_perms(req):
-    d = req.json().get("perms") or {}
-    dev = store.get_setting(req.conn, req.user["id"], "device", defs.DEFAULT_DEVICE)
-    for k in ("steps", "hr", "spo2", "sleep"):
-        if k in d:
-            dev["perms"][k] = flag(d[k], k)
-    store.set_setting(req.conn, req.user["id"], "device", dev)
-    return {"device": dev}
-
-
-@route("POST", "/api/device/sync")
-def device_sync(req):
-    store.require_consent(req.conn, req.user["id"], "wearable")
-    dev = store.get_setting(req.conn, req.user["id"], "device", defs.DEFAULT_DEVICE)
-    if not dev["connected"]:
-        raise ApiError(409, "Connect the watch first.", code="not_connected")
-    return _sync(req, dev)
-
-
-def _sync(req, dev):
-    """Fill in simulated readings for days that have none. Real values the person typed are never overwritten."""
-    conn, uid = req.conn, req.user["id"]
-    today = date.today()
-    first_time = dev.get("last_sync") is None
-    start = today - timedelta(days=13 if first_time else 3)
-    now = datetime.now()
-    for i in range((today - start).days + 1):
-        d = start + timedelta(days=i)
-        frac = max(0.15, min(1.0, (now.hour * 60 + now.minute) / 1200)) if d == today else 1.0
-        v = _simulate_day(uid, d, frac)
-        perms = dev["perms"]
-        conn.execute("INSERT OR IGNORE INTO daily (user_id, date) VALUES (?,?)", (uid, d.isoformat()))
-        sets, vals = [], []
-        for col, perm in (("steps", "steps"), ("rhr", "hr"), ("hrv", "hr"), ("spo2_avg", "spo2"), ("spo2_min", "spo2"),
-                          ("sleep_min", "sleep"), ("bed_min", "sleep")):
-            if perms.get(perm):
-                sets.append(f"{col} = COALESCE({col}, ?)" if col not in ("steps",) or d != today else "steps = ?")
-                vals.append(v[col])
-        if sets:
-            conn.execute(f"UPDATE daily SET {', '.join(sets)} WHERE user_id = ? AND date = ?", (*vals, uid, d.isoformat()))
-    dev["last_sync"] = iso_now()
-    store.set_setting(conn, uid, "device", dev)
-    return {"device": dev}
 
 
 # ---------- plan ----------

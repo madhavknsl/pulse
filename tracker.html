@@ -51,7 +51,6 @@
           <h1>Your tracker</h1>
           <p class="sub">Everything you track, in one place. Tap a tile, or open the menu.</p>
         </div>
-        <span class="sync-chip"><i></i>Watch connected · demo data</span>
       </header>
       <div class="tiles" id="tiles"></div>
     </section>
@@ -59,7 +58,7 @@
     <!-- ================= Steps ================= -->
     <section class="view" id="view-steps" hidden>
       <header class="view-head">
-        <div><h1>Steps</h1><p class="sub">Counted by your watch</p></div>
+        <div><h1>Steps</h1><p class="sub">Add your steps for any day</p></div>
         <div class="seg" data-for="steps" role="group" aria-label="Time range">
           <button type="button" data-days="7" aria-pressed="true">7 days</button>
           <button type="button" data-days="30" aria-pressed="false">30 days</button>
@@ -71,46 +70,21 @@
       </div>
       <div class="stats" id="steps-stats"></div>
       <div class="card"><h2>Daily steps</h2><svg class="chart" id="chart-steps" role="img"></svg></div>
-    </section>
-
-    <!-- ================= Heart rate ================= -->
-    <section class="view" id="view-heart" hidden>
-      <header class="view-head">
-        <div><h1>Heart rate</h1><p class="sub">Resting heart rate from your watch</p></div>
-        <div class="seg" data-for="heart" role="group" aria-label="Time range">
-          <button type="button" data-days="7" aria-pressed="true">7 days</button>
-          <button type="button" data-days="30" aria-pressed="false">30 days</button>
+      <form class="card" id="steps-form" novalidate>
+        <h2>Add steps</h2>
+        <div class="form-row">
+          <div class="field"><label for="steps-date">Day</label><input class="input" id="steps-date" type="date" required></div>
+          <div class="field"><label for="steps-n">Steps</label><input class="input" id="steps-n" type="number" inputmode="numeric" min="0" max="100000" step="1" placeholder="e.g. 6500" required></div>
+          <button class="btn btn-inline" type="submit">Save steps</button>
         </div>
-      </header>
-      <div class="card">
-        <div class="big-line"><span class="big" id="hr-big"></span><span class="muted">bpm resting today</span></div>
-        <p class="fine" style="margin-top:8px">Resting heart rate is your pulse when you are still. It often moves with stress, sleep and illness.</p>
-      </div>
-      <div class="stats" id="hr-stats"></div>
-      <div class="card"><h2>Resting heart rate</h2><svg class="chart" id="chart-hr" role="img"></svg></div>
-    </section>
-
-    <!-- ================= SpO2 ================= -->
-    <section class="view" id="view-spo2" hidden>
-      <header class="view-head">
-        <div><h1>SpO₂</h1><p class="sub">Blood oxygen estimated overnight by your watch</p></div>
-        <div class="seg" data-for="spo2" role="group" aria-label="Time range">
-          <button type="button" data-days="7" aria-pressed="true">7 days</button>
-          <button type="button" data-days="30" aria-pressed="false">30 days</button>
-        </div>
-      </header>
-      <div class="card">
-        <div class="big-line"><span class="big" id="spo-big"></span><span class="muted">% average last night</span></div>
-        <p class="fine" style="margin-top:8px">Watch readings are estimates, not a medical measurement.</p>
-      </div>
-      <div class="stats" id="spo-stats"></div>
-      <div class="card"><h2>Nightly average</h2><svg class="chart" id="chart-spo" role="img"></svg></div>
+        <p class="msg-line" id="steps-msg" role="status"></p>
+      </form>
     </section>
 
     <!-- ================= Sleep ================= -->
     <section class="view" id="view-sleep" hidden>
       <header class="view-head">
-        <div><h1>Sleep</h1><p class="sub">From your watch, or add a night yourself</p></div>
+        <div><h1>Sleep</h1><p class="sub">Add a night yourself</p></div>
         <div class="seg" data-for="sleep" role="group" aria-label="Time range">
           <button type="button" data-days="7" aria-pressed="true">7 nights</button>
           <button type="button" data-days="30" aria-pressed="false">30 nights</button>
@@ -122,8 +96,9 @@
       <div class="stats" id="sleep-stats"></div>
       <div class="card"><h2>Hours slept</h2><svg class="chart" id="chart-sleep" role="img"></svg></div>
       <form class="card" id="sleep-form" novalidate>
-        <h2>Add last night</h2>
+        <h2>Add a night</h2>
         <div class="form-row">
+          <div class="field"><label for="sleep-date">Day you woke up</label><input class="input" id="sleep-date" type="date" required></div>
           <div class="field"><label for="bed">Went to bed</label><input class="input" id="bed" type="time" required></div>
           <div class="field"><label for="wake">Woke up</label><input class="input" id="wake" type="time" required></div>
           <button class="btn btn-inline" type="submit">Save sleep</button>

@@ -67,7 +67,7 @@
   var SHARE = [
     { k: 'profile', label: 'Basic details & health background', sub: 'Name, age, sex, height, conditions, allergies, family history, diet and work. Never your phone or email.' },
     { k: 'mood', label: 'Mood, stress & questionnaires', sub: 'Daily mood, stress rating, PHQ-9 and GAD-7' },
-    { k: 'sleep', label: 'Sleep, heart rate & SpO₂', sub: 'From your watch' },
+    { k: 'sleep', label: 'Sleep', sub: '' },
     { k: 'activity', label: 'Steps & workouts', sub: '' },
     { k: 'cycle', label: 'Cycle & symptoms', sub: 'Periods, symptoms and day tags' },
     { k: 'weight', label: 'Weight & waist', sub: '' },
@@ -403,7 +403,7 @@
     var h = '<h2>Pre-visit summary</h2><p class="muted" style="margin-top:4px">' + esc(sm.patient.name) + ', ' + sm.patient.age + ' · ' + esc(sm.patient.city) + '<br>Prepared for ' + name + ' · last 90 days to ' + fmtDate(parseKey(sm.period_to)) + ' · self-tracked data</p>';
     h += sec('Overall', S.overall, function (o) { return '<div class="sum-grid">' + num(pair(o.first, o.now), 'Health Factor, first day to now') + '</div>'; });
     h += sec('Mind', S.mind, function (m) { return '<div class="sum-grid">' + num(pair(m.phq9.first, m.phq9.now), 'PHQ-9 score') + num(pair(m.gad7.first, m.gad7.now), 'GAD-7 score') + num(m.mood7 == null ? '–' : m.mood7.toFixed(1) + ' / 5', 'Average mood, last 7 days') + '</div>'; });
-    h += sec('Sleep and activity', S.sleep_activity, function (s) { return '<div class="sum-grid">' + num(minToDur(s.sleep_min), 'Average sleep') + num(s.rhr == null ? '–' : s.rhr + ' bpm', 'Resting heart rate') + num(s.steps == null ? '–' : s.steps.toLocaleString('en-IN'), 'Average steps a day') + num(s.workouts_per_week + ' / week', 'Workouts') + '</div>'; });
+    h += sec('Sleep and activity', S.sleep_activity, function (s) { return '<div class="sum-grid">' + num(minToDur(s.sleep_min), 'Average sleep') + num(s.steps == null ? '–' : s.steps.toLocaleString('en-IN'), 'Average steps a day') + num(s.workouts_per_week + ' / week', 'Workouts') + '</div>'; });
     h += sec('Cycle and symptoms', S.cycle, function (c) {
       return '<div class="sum-grid">' + num(c.cycle_lengths.length ? c.cycle_lengths.join(', ') + ' days' : '–', 'Last two cycles') + c.symptoms.map(function (s) { return num(esc(s.name) + ' ' + s.days, 'Days with it, of last 30'); }).join('') + '</div>' + (c.symptoms.length ? '' : '<p class="sum-off">No symptoms logged in the last 30 days.</p>');
     });

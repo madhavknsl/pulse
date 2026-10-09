@@ -191,10 +191,9 @@ def build_summary(conn, user, provider, link):
 
     def body_sa():
         rows = conn.execute("SELECT * FROM daily WHERE user_id = ? AND date >= ?", (uid, d30)).fetchall()
-        rhr = conn.execute("SELECT rhr FROM daily WHERE user_id = ? AND rhr IS NOT NULL ORDER BY date DESC LIMIT 1", (uid,)).fetchone()
         wo = conn.execute("SELECT COUNT(*) c FROM workouts WHERE user_id = ? AND date >= ?", (uid, (today - timedelta(days=28)).isoformat())).fetchone()["c"]
         sl = _mean([r["sleep_min"] for r in rows])
-        return {"sleep_min": None if sl is None else int(round(sl)), "rhr": rhr["rhr"] if rhr else None,
+        return {"sleep_min": None if sl is None else int(round(sl)),
                 "steps": None if not rows else (None if _mean([r["steps"] for r in rows]) is None else int(round(_mean([r["steps"] for r in rows])))),
                 "workouts_per_week": round(wo / 4, 1)}
     section("sleep_activity", share.get("sleep") and share.get("activity"), body_sa)

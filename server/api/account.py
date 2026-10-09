@@ -24,7 +24,6 @@ def public_user(conn, u):
 def _new_defaults(conn, uid):
     store.set_setting(conn, uid, "notifications", defs.DEFAULT_NOTIFICATIONS)
     store.set_setting(conn, uid, "goals", defs.DEFAULT_GOALS)
-    store.set_setting(conn, uid, "device", defs.DEFAULT_DEVICE)
     store.set_setting(conn, uid, "ui", defs.DEFAULT_UI)
     plan = dict(defs.DEFAULT_PLAN, renews=(date.today() + timedelta(days=30)).isoformat())
     store.set_setting(conn, uid, "plan", plan)

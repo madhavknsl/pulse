@@ -67,13 +67,12 @@ def _create(conn):
         "pcos_status": "Diagnosed by a doctor", "stress_duration": "More than 6 months", "stress_sources": ["Work pressure"]})
     store.set_setting(conn, uid, "goals", {"sleep_h": 7, "steps": 7000, "weight_kg": 72})
     store.set_setting(conn, uid, "notifications", defs.DEFAULT_NOTIFICATIONS)
-    store.set_setting(conn, uid, "device", {"connected": True, "last_sync": _stamp(0, datetime.now().hour), "perms": dict(defs.DEFAULT_DEVICE["perms"])})
     store.set_setting(conn, uid, "plan", {"price": 399, "status": "active", "renews": (date.today() + timedelta(days=18)).isoformat(), "method": "UPI"})
     store.set_setting(conn, uid, "ui", defs.DEFAULT_UI)
     store.set_setting(conn, uid, "emergency", {"name": "Rohan Raman", "relation": "Brother", "phone": "9876501234", "consent": True,
                                               "alert_doctor": True, "auto_alert": True})   # sample contact, so the Journal alert can be demonstrated
 
-    # --- 90 days of watch + check-in data: sleep nudges mood, so the patterns are real (in the simulation) ---
+    # --- 90 days of steps, sleep and check-ins: sleep nudges mood, so the patterns are real (in the sample) ---
     prev_steps = 4700
     for i in range(90):
         age = 89 - i
@@ -89,10 +88,11 @@ def _create(conn):
         stress = max(1, min(5, round(gauss(3.2 - 0.6 * ease, 0.7)))) if age < 14 and logged else None
         if age == 0:
             steps = 5320
+        for _ in range(3 if age == 0 else 4):
+            gauss(0, 1)   # unused draws: they keep the random sequence, so the sample data stays exactly as it was tuned
         conn.execute(
-            "INSERT INTO daily (user_id, date, steps, rhr, hrv, spo2_avg, spo2_min, sleep_min, bed_min, mood, mood_at, stress) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
-            (uid, day, int(round(steps / 10) * 10), 74 if age == 0 else int(round(77 - i * 0.04 + gauss(0, 1.4))), int(round(gauss(40, 4))),
-             round(max(94, min(99, gauss(96, 0.5))), 1), int(round(max(88, min(96, gauss(93, 1))))), int(round(sleep * 60)), int(round(gauss(40, 45))),
+            "INSERT INTO daily (user_id, date, steps, sleep_min, bed_min, mood, mood_at, stress) VALUES (?,?,?,?,?,?,?,?)",
+            (uid, day, int(round(steps / 10) * 10), int(round(sleep * 60)), int(round(gauss(40, 45))),
              mood, _stamp(age, 21) if logged else None, stress))
         prev_steps = steps
 
