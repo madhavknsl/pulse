@@ -5,7 +5,7 @@ CITIES = ["Bengaluru", "Elsewhere in India"]
 SEX = ["Female", "Male", "Intersex", "Prefer not to say"]
 LANGUAGES = ["English", "हिन्दी (Hindi)", "ಕನ್ನಡ (Kannada)"]
 
-# What a doctor can be given access to. Journal chats are deliberately not on this list: never shareable.
+# What a doctor can be given access to. Pulsie chats are deliberately not on this list: never shareable.
 SHARE_KEYS = ["profile", "mood", "sleep", "activity", "cycle", "weight", "meals", "meds", "labs"]
 EXPIRY = ["Until I stop it", "30 days", "90 days"]
 SHARE_LABELS = {

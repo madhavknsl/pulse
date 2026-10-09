@@ -86,7 +86,7 @@
     cycle_symptoms: ['My periods and symptoms', 'Used to show your cycle history and what moves with it.', false],
     sleep_activity: ['My sleep, steps and workouts', 'Typed in by you. Used for your trends and patterns.', false],
     meals_meds: ['My meals and medicines', 'Used to show eating patterns and keep a record for your doctor. Pulse never suggests medicines.', false],
-    ai_journal: ['Journal chat with AI', 'What you type in the Journal is sent to Claude, an AI model made by Anthropic, so it can ask you questions. Pulse does not save the chat. It keeps only a wellbeing score from it.', false]
+    ai_journal: ['Chat with Pulsie (AI)', 'What you type to Pulsie is sent to Claude, an AI model made by Anthropic, so Pulsie can ask you questions. Pulse does not save the chat. It keeps only a wellbeing score from it.', false]
   };
 
   /* ---------- PHQ-9 and GAD-7 (standard public-domain wording) ---------- */

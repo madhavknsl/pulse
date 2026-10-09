@@ -1,4 +1,4 @@
-"""The Journal's AI: asks questions and scores a check-in, using the Claude API.
+"""Pulsie's AI: asks questions, picks its mood, and scores a check-in, using the Claude API.
 
 Standard library only. The key comes from the environment or from ./.env (ANTHROPIC_API_KEY) and is never logged.
 The instructions the AI follows live in server/prompts/*.md. They are read on every call, so edits apply without a restart.
@@ -20,6 +20,7 @@ TIMEOUT = 30
 FALLBACK_QUESTIONS = ["Can you tell me a little more about that?", "What has been on your mind the most today?",
                       "How did that feel in the moment?", "What happened next?"]
 RISKS = ("none", "concern", "crisis")
+MOOD_TAG = re.compile(r"^\s*\[(happy|sad)\]\s*", re.I)   # Pulsie starts every reply with its mood: [happy] or [sad]
 
 
 class AiUnavailable(Exception):
@@ -92,22 +93,26 @@ def _plain(text):
 
 
 def next_question(history, used_fallbacks=0):
-    """history: [{'role': 'user'|'assistant', 'content': str}, ...], ending with the person's message."""
-    text = _plain(complete(_prompt("journal_guide.md"), history, 220))
-    if "?" not in text:   # guardrail: the journal only ever asks
+    """history: [{'role': 'user'|'assistant', 'content': str}, ...], ending with the person's message.
+    Returns (mood, question): mood is 'happy' or 'sad' as chosen by the AI, and happy when it gives none."""
+    raw = complete(_prompt("pulsie_guide.md"), history, 220)
+    tag = MOOD_TAG.match(raw)
+    mood = tag.group(1).lower() if tag else "happy"
+    text = _plain(re.sub(r"\[(?:happy|sad)\]", "", raw[tag.end():] if tag else raw, flags=re.I))
+    if "?" not in text:   # guardrail: Pulsie only ever asks
         text = FALLBACK_QUESTIONS[used_fallbacks % len(FALLBACK_QUESTIONS)]
-    return text[:600]
+    return mood, text[:600]
 
 
 def assess(history, safety_phrase=False):
     """Score the conversation. Returns (score 0-100, risk). Raises AiUnavailable if there is no usable answer."""
     def clean(s):
         return s.replace("<", "(").replace(">", ")")   # the person cannot close our tags
-    lines = [("Person: " if m["role"] == "user" else "Journal: ") + clean(m["content"]) for m in history]
+    lines = [("Person: " if m["role"] == "user" else "Pulsie: ") + clean(m["content"]) for m in history]
     content = "<conversation>\n" + "\n".join(lines) + "\n</conversation>"
     if safety_phrase:
         content += "\n<app_flag>The app's keyword check noticed a possible self-harm phrase.</app_flag>"
-    raw = complete(_prompt("journal_score.md"), [{"role": "user", "content": content}], 1500, think=True)
+    raw = complete(_prompt("pulsie_score.md"), [{"role": "user", "content": content}], 1500, think=True)
     found = re.search(r"\{.*?\}", raw, re.S)
     if not found:
         raise AiUnavailable("score was not JSON")

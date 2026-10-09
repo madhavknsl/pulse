@@ -243,7 +243,7 @@
         }).join('') : '<p class="empty">No one matches. Try another area or specialty.</p>') + '</div><p class="why">These are demo providers for the prototype.</p>';
       if (d.draft) {
         var dr = d.draft;
-        body += '<div class="sub-block"><strong>Link ' + esc(dr.p.name) + '</strong><p class="why" style="margin:0">Everything is off until you turn it on. You can change this any time, and journal chats are never shared.</p>' +
+        body += '<div class="sub-block"><strong>Link ' + esc(dr.p.name) + '</strong><p class="why" style="margin:0">Everything is off until you turn it on. You can change this any time, and Pulsie chats are never shared.</p>' +
           S.meta.share_keys.map(function (k) { return '<label class="consent-row" style="padding:8px 0"><input type="checkbox" data-dshare="' + k + '"' + (dr.share[k] ? ' checked' : '') + '><span><strong style="font-size:.9375rem">' + esc(S.meta.share_labels[k]) + '</strong></span></label>'; }).join('') +
           field('Access lasts', 'd-exp', select('d-exp', S.meta.expiry, dr.expires)) +
           '<div class="nav-row" style="margin-top:4px"><button class="btn" type="button" data-act="dlink">Link and share</button><button class="btn btn-secondary" type="button" data-act="dcancel">Cancel</button></div></div>';
@@ -324,7 +324,7 @@
       field('Mobile number', 'em-phone', input('em-phone', 'tel', e.phone, 'inputmode="numeric" maxlength="10" placeholder="10 digits"')) +
       '<label class="consent-row" style="padding:0"><input type="checkbox" id="em-consent"' + (e.consent ? ' checked' : '') + '><span class="d">I agree this person can be contacted if I ask for urgent help.</span></label>' +
       (linkedAny ? '<label class="consent-row" style="padding:0"><input type="checkbox" id="em-doc"' + (e.alert_doctor ? ' checked' : '') + '><span class="d">Also let my linked doctor know if I ask for urgent help.</span></label>' : '') +
-      '<label class="consent-row" style="padding:0"><input type="checkbox" id="em-auto"' + (e.auto_alert ? ' checked' : '') + '><span class="d">Tell them automatically if my Journal check-in score is very low, or I mention hurting myself. They never see the chat.</span></label>' +
+      '<label class="consent-row" style="padding:0"><input type="checkbox" id="em-auto"' + (e.auto_alert ? ' checked' : '') + '><span class="d">Tell them automatically if my Pulsie check-in score is very low, or I mention hurting myself. They never see the chat.</span></label>' +
       navRow({ label: 'Finish' }) + '</form>');
   }
   function submitFinish() {

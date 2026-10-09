@@ -192,7 +192,7 @@
   function consentPanel(d) {
     var c = state.consent;
     return '<div class="consent-box"><h3>Link ' + esc(d.name) + ' as your doctor</h3>' +
-      '<p class="fine" style="margin:4px 0 8px">Choose what this provider can see. Everything is off until you turn it on. You can change it any time. Journal chats are never shared.</p>' +
+      '<p class="fine" style="margin:4px 0 8px">Choose what this provider can see. Everything is off until you turn it on. You can change it any time. Pulsie chats are never shared.</p>' +
       SHARE.map(function (s) {
         return '<label class="perm" style="cursor:pointer"><span class="grow"><strong>' + esc(s.label) + '</strong>' + (s.sub ? '<span class="meta">' + esc(s.sub) + '</span>' : '') + '</span>' +
           '<span class="switch"><input type="checkbox" data-cshare="' + s.k + '" data-fk="' + d.id + '|cs-' + s.k + '"' + (c.share[s.k] ? ' checked' : '') + '><span></span></span></label>';
@@ -427,7 +427,7 @@
         '<div style="margin-top:8px">' + SHARE.map(function (s) {
           return '<label class="perm" style="cursor:pointer"><span class="grow"><strong>' + esc(s.label) + '</strong>' + (s.sub ? '<span class="meta">' + esc(s.sub) + '</span>' : '') + '</span><span class="switch"><input type="checkbox" data-sh="' + d.id + '|' + s.k + '"' + (l.share[s.k] ? ' checked' : '') + ' aria-label="Share ' + esc(s.label) + ' with ' + esc(d.name) + '"><span></span></span></label>';
         }).join('') +
-        '<div class="perm locked"><span class="grow"><strong>Journal chats</strong><span class="meta">Never shared. Not saved, and never visible to any doctor.</span></span><span class="st reviewed">Always off</span></div></div>' +
+        '<div class="perm locked"><span class="grow"><strong>Pulsie chats</strong><span class="meta">Never shared. Not saved, and never visible to any doctor.</span></span><span class="st reviewed">Always off</span></div></div>' +
         '<div class="form-row"><div class="field"><label for="exp-' + d.id + '">Access lasts</label><select class="input" id="exp-' + d.id + '" data-exp="' + d.id + '">' + EXPIRY.map(function (e) { return '<option' + (l.expires === e ? ' selected' : '') + '>' + e + '</option>'; }).join('') + '</select></div></div>' +
         '<div class="btn-row">' + (state.revokeAsk === d.id ? '<span class="fine" style="align-self:center">Stop sharing with ' + esc(d.name) + '?</span><button class="btn-danger-sm" type="button" data-revoke-yes="' + d.id + '">Yes, stop sharing</button><button class="btn-outline-sm" type="button" data-revoke-no>Keep sharing</button>'
           : '<button class="btn-danger-sm" type="button" data-revoke="' + d.id + '">Stop sharing and unlink</button>') + '</div></div>';

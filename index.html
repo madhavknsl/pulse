@@ -36,16 +36,6 @@
         <p class="sub">Sign in to continue.</p>
 
         <form class="form-wrap" id="login-form" novalidate>
-          <fieldset class="roles">
-            <legend class="visually-hidden">I am signing in as</legend>
-            <div class="roles-track">
-              <input type="radio" name="role" id="role-user" value="user" checked>
-              <label for="role-user">User</label>
-              <input type="radio" name="role" id="role-provider" value="provider">
-              <label for="role-provider">Healthcare provider</label>
-            </div>
-          </fieldset>
-
           <div class="form">
             <div class="field">
               <label for="identity" id="identity-label">Email or mobile number</label>
@@ -70,7 +60,7 @@
 
             <button class="btn" type="submit" id="submit">Sign in</button>
 
-            <p class="alt"><span id="alt-text">New to Pulse?</span> <a href="register.html" id="alt-link">Create an account</a></p>
+            <p class="alt">New to Pulse? <a href="register.html">Create an account</a></p>
           </div>
         </form>
       </section>
@@ -106,42 +96,11 @@
   <script>
     (function () {
       Pulse.publicPage = true;
-      var roles = {
-        user: {
-          label: 'Email or mobile number', type: 'text', mode: 'email',
-          placeholder: 'you@example.com or mobile',
-          submit: 'Sign in', altText: 'New to Pulse?', altLink: 'Create an account'
-        },
-        provider: {
-          label: 'Work email', type: 'email', mode: 'email',
-          placeholder: 'doctor@clinic.com',
-          submit: 'Sign in as provider', altText: 'New to Pulse?', altLink: 'Register your practice'
-        }
-      };
-
       var form = document.getElementById('login-form');
       var identity = document.getElementById('identity');
       var note = document.getElementById('form-note');
       var pass = document.getElementById('password');
       var toggle = document.getElementById('toggle-pass');
-
-      function applyRole(key) {
-        var r = roles[key];
-        document.getElementById('identity-label').textContent = r.label;
-        identity.type = r.type;
-        identity.setAttribute('inputmode', r.mode);
-        identity.placeholder = r.placeholder;
-        document.getElementById('submit').textContent = r.submit;
-        document.getElementById('alt-text').textContent = r.altText;
-        var alt = document.getElementById('alt-link');
-        alt.textContent = r.altLink;
-        alt.setAttribute('href', key === 'user' ? 'register.html' : '#');
-        note.hidden = true;
-      }
-
-      form.addEventListener('change', function (e) {
-        if (e.target.name === 'role') applyRole(e.target.value);
-      });
 
       toggle.addEventListener('click', function () {
         var show = pass.type === 'password';
@@ -161,15 +120,9 @@
       form.addEventListener('submit', function (e) {
         e.preventDefault();
         if (!form.checkValidity()) { form.reportValidity(); return; }
-        var role = form.querySelector('input[name="role"]:checked').value;
         var id = identity.value.trim();
-        var idOk = EMAIL.test(id) || (role === 'user' && MOBILE.test(id.replace(/\s/g, '')));
-        if (!idOk) {
-          say(role === 'user' ? 'Enter a valid email address or a 10-digit mobile number.' : 'Enter a valid work email address.', true);
-          return;
-        }
-        if (role === 'provider') {
-          say('The healthcare provider dashboard is coming soon. For now, sign in as a User.', false);
+        if (!(EMAIL.test(id) || MOBILE.test(id.replace(/\s/g, '')))) {
+          say('Enter a valid email address or a 10-digit mobile number.', true);
           return;
         }
         var btn = document.getElementById('submit');

@@ -1,4 +1,4 @@
-"""The AI Journal: the next question, and a wellbeing score for the check-in. A very low score alerts the people the user chose.
+"""Pulsie, the AI chat companion: the next question, its mood, and a wellbeing score for the check-in. A very low score alerts the people the user chose.
 
 Privacy: the chat itself is never stored. Only the score, the risk level and who was alerted are kept.
 """
@@ -59,7 +59,7 @@ def _guard(req):
     """Consent, availability and a limit on how fast someone can use the AI (it costs money)."""
     store.require_consent(req.conn, req.user["id"], "ai_journal")
     if not ai.available():
-        raise ApiError(503, "The journal assistant isn't set up on this computer yet.", code="ai_unavailable")
+        raise ApiError(503, "Pulsie isn't set up on this computer yet.", code="ai_unavailable")
     key = f"journal:{req.user['id']}"
     if security.throttled(key, RATE_LIMIT, RATE_WINDOW):
         raise ApiError(429, "You are going quite fast. Please wait a few minutes.", code="rate_limited")
@@ -100,9 +100,9 @@ def _raise_alert(conn, user, score, risk):
                       f"{name} may be having a hard time and could use your support. Please check in with them.", score, risk))
     for d in docs:
         conn.execute("INSERT INTO alerts (user_id, created_at, recipient_kind, provider_id, recipient_name, message, score, risk) VALUES (?,?,?,?,?,?,?,?)",
-                     (uid, now, "doctor", d["id"], d["name"], f"Journal check-in for {name}: {what}. Please follow up with them.", score, risk))
+                     (uid, now, "doctor", d["id"], d["name"], f"Pulsie check-in for {name}: {what}. Please follow up with them.", score, risk))
     who = ", ".join(([f"{contact['name']} (emergency contact)"] if contact else []) + [d["name"] for d in docs])
-    store.log_access(conn, uid, f"Your journal check-in was very low. Pulse alerted: {who}. (Prototype: nothing was actually sent.)")
+    store.log_access(conn, uid, f"Your Pulsie check-in was very low. Pulse alerted: {who}. (Prototype: nothing was actually sent.)")
     return out
 
 
@@ -142,11 +142,11 @@ def chat(req):
     history = _messages(req.json(), must_end_with_user=True)
     _guard(req)
     safety = bool(CRISIS.search(history[-1]["content"]))
-    reply = None
+    reply, mood = None, "sad" if safety else "happy"
     if not safety:   # a safety phrase gets the support card, not another question
         try:
             asked = sum(1 for m in history if m["role"] == "assistant")
-            reply = ai.next_question(history, asked)
+            mood, reply = ai.next_question(history, asked)
         except ai.AiUnavailable as e:
             print(f"[journal] could not get a question: {e}")
             raise ApiError(503, "I can't reach the assistant right now. Please try again in a moment.", code="ai_unavailable")
@@ -154,7 +154,7 @@ def chat(req):
     check = None
     if safety or turns % ASSESS_EVERY == 0:
         check = _assess_and_alert(req, history, safety, "auto")
-    return {"reply": reply, "crisis": safety, "check": check}
+    return {"reply": reply, "mood": mood, "crisis": safety, "check": check}
 
 
 @route("POST", "/api/journal/finish", tx=False)

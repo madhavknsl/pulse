@@ -42,8 +42,9 @@
     chat: '<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',
     back: '<path d="M15 6l-6 6 6 6"/>'
   };
-  function svg(name) { return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON[name] + '</svg>'; }
-  var PULSE_MARK = '<svg viewBox="0 0 32 32" aria-hidden="true"><path d="M5 17h5l3-7 5 13 3-6h6" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  function svg(name) {
+    if (name === 'pulsie') return '<img src="assets/pulsie-happy.png" alt="" width="22" height="22">';
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON[name] + '</svg>'; }
 
   /* ---------- navigation ---------- */
   var NAV = [
@@ -61,7 +62,7 @@
     { id: 'meds', label: 'Medication', icon: 'pill' },
     { group: 'Mind' },
     { id: 'stress', label: 'Stress & anxiety', icon: 'gauge' },
-    { id: 'journal', label: 'Journal', icon: 'chat' }
+    { id: 'pulsie', label: 'Pulsie', icon: 'pulsie' }
   ];
   var LABEL = {}; NAV.forEach(function (n) { if (n.id) LABEL[n.id] = n.label; });
 
@@ -264,7 +265,7 @@
       { id: 'meals', icon: 'utensils', label: 'Meals today', val: state.meals.length + ' logged', sub: 'No calorie counting' },
       { id: 'meds', icon: 'pill', label: 'Medication', val: taken + ' of ' + state.meds.length + ' taken', sub: 'Today' },
       { id: 'stress', icon: 'gauge', label: 'Stress today', val: state.stress ? STRESS[state.stress - 1] : 'Not logged', sub: 'Plus check-ins' },
-      { id: 'journal', icon: 'chat', label: 'Journal', val: 'Talk it out', sub: 'Questions only' }
+      { id: 'pulsie', icon: 'pulsie', label: 'Pulsie', val: 'Talk it out', sub: 'Questions only' }
     ];
     $('#tiles').innerHTML = T.map(function (t) {
       return '<a class="tile" href="#' + t.id + '"><span class="t-head">' + svg(t.icon) + esc(t.label) + '</span><span class="t-val">' + esc(t.val) + '</span><span class="t-sub">' + esc(t.sub) + '</span></a>';
@@ -465,31 +466,45 @@
     }
   }
 
-  /* ---------- journal (chat) ---------- */
-  // Live AI: Claude asks the questions (rules in server/prompts/journal_guide.md) and scores the check-in. The chat is kept only in this page.
+  /* ---------- Pulsie (chat) ---------- */
+  // Live AI: Claude, as Pulsie, asks the questions (rules in server/prompts/pulsie_guide.md), picks a happy or sad face for each
+  // reply, and scores the check-in. The chat is kept only in this page.
   // The words below always get the support card at once, before the AI answers.
   var CRISIS = /suicid|kill myself|end my life|end it all|self[- ]?harm|hurt myself|want to die|wanna die|don'?t want to (live|be here)|better off dead|no reason to live|marna chahta|mar jana chahta|jeena nahi|khud ko (khatam|maar)/i;
   var STARTERS = ['Work has been a lot', 'I could not sleep', 'I am feeling low', 'I just need to vent'];
-  var chat = { history: [], busy: false, finished: false, ready: false, helped: false, noticed: false };
+  var chat = { history: [], busy: false, finished: false, ready: false, helped: false, noticed: false, mood: 'happy' };
+
+  var FACE = { happy: 'assets/pulsie-happy.png', sad: 'assets/pulsie-sad.png' };
+  [FACE.happy, FACE.sad].forEach(function (src) { new Image().src = src; });   // load both faces now, so a change of mood does not flicker
+  function faceOf(mood) { return mood === 'sad' ? 'sad' : 'happy'; }
+  function faceSpan(mood) { return '<span class="av pulsie"><img src="' + FACE[faceOf(mood)] + '" alt="" width="44" height="44"></span>'; }
+  function setMood(mood) {   // the big face at the top follows the mood of the chat
+    chat.mood = faceOf(mood);
+    var f = $('#pulsie-face');
+    if (f.getAttribute('src') !== FACE[chat.mood]) {
+      f.src = FACE[chat.mood]; f.alt = 'Pulsie, ' + chat.mood;
+      f.classList.remove('pop'); void f.offsetWidth; f.classList.add('pop');
+    }
+  }
 
   function msgsEl() { return $('#msgs'); }
   function scrollDown() { var m = msgsEl(); m.scrollTop = m.scrollHeight; }
-  function addMsg(role, text) {
+  function addMsg(role, text, mood) {
     var row = document.createElement('div'); row.className = 'msg ' + role;
-    if (role === 'bot') { var av = document.createElement('span'); av.className = 'av'; av.innerHTML = PULSE_MARK; row.appendChild(av); }
+    if (role === 'bot') row.innerHTML = faceSpan(mood || chat.mood);
     var t = document.createElement('div'); t.className = 'txt'; t.textContent = text; row.appendChild(t);
     msgsEl().appendChild(row); scrollDown(); return row;
   }
-  function addBlock(html) {   // a bot-side card (support, score, demo notice)
+  function addBlock(html, mood) {   // a bot-side card (support, score, demo notice)
     var row = document.createElement('div'); row.className = 'msg bot';
-    row.innerHTML = '<span class="av">' + PULSE_MARK + '</span><div class="txt">' + html + '</div>';
+    row.innerHTML = faceSpan(mood || chat.mood) + '<div class="txt">' + html + '</div>';
     msgsEl().appendChild(row); scrollDown();
   }
   var HELP = '<div class="acts"><a class="btn btn-sm" href="tel:14416">Call 14416</a><a class="btn btn-sm btn-outline" href="tel:112">Call 112</a></div>';
   function addCrisis() {
-    chat.helped = true;
+    chat.helped = true; setMood('sad');
     addBlock('<div class="crisis"><p><strong>I am really glad you said that out loud.</strong></p>' +
-      '<p>I am an AI, so I cannot help in a crisis, but a trained person can, right now. Tele-MANAS is free and open 24×7. In an emergency, call 112.</p>' + HELP + '</div>');
+      '<p>I am an AI, so I cannot help in a crisis, but a trained person can, right now. Tele-MANAS is free and open 24×7. In an emergency, call 112.</p>' + HELP + '</div>', 'sad');
   }
 
   // What the page shows after a check-in. The DEMO box is only for the prototype and goes away in the real product.
@@ -510,6 +525,7 @@
     if (!check) return;
     var low = check.score === null || check.score < 50;
     if (final) {
+      setMood(low ? 'sad' : 'happy');
       addBlock('<div class="score-card"><div class="score-line"><span class="score-n">' + (check.score === null ? '–' : check.score) + '</span><span class="score-of">/ 100</span></div>' +
         '<p><strong>' + esc(BAND_TEXT[check.band] || '') + '</strong></p>' +
         '<p class="fine">A check-in score from this conversation only. It is not a diagnosis. Pulse keeps this number, not your chat.</p>' +
@@ -526,8 +542,9 @@
   function setBusy(b) { chat.busy = b; $('#chat-send').disabled = b || chat.finished; $('#finish-chat').disabled = b || chat.finished || !chat.history.length; }
   function startChat() {
     chat.history = []; chat.finished = false; chat.helped = false; chat.noticed = false;
+    setMood('happy');   // Pulsie starts happy
     msgsEl().innerHTML = '';
-    addMsg('bot', 'Hi ' + state.name + '. This is a quiet space to think out loud. I will only ask questions, and I cannot give advice. What is on your mind?');
+    addMsg('bot', 'Hi ' + state.name + '. I am Pulsie. This is a quiet space to think out loud. I will only ask questions, and I cannot give advice. What is on your mind?', 'happy');
     var s = document.createElement('div'); s.className = 'starters'; s.id = 'starters';
     s.innerHTML = STARTERS.map(function (t) { return '<button type="button" class="chip-btn" data-start="' + esc(t) + '">' + esc(t) + '</button>'; }).join('');
     msgsEl().appendChild(s);
@@ -535,7 +552,7 @@
   }
   function typingRow() {
     var row = document.createElement('div'); row.className = 'msg bot';
-    row.innerHTML = '<span class="av">' + PULSE_MARK + '</span><div class="txt"><span class="typing" aria-label="Typing"><i></i><i></i><i></i></span></div>';
+    row.innerHTML = faceSpan(chat.mood) + '<div class="txt"><span class="typing" aria-label="Typing"><i></i><i></i><i></i></span></div>';
     msgsEl().appendChild(row); scrollDown(); return row;
   }
   function send(text) {
@@ -550,7 +567,8 @@
     P.post('/api/journal/chat', { messages: chat.history }).then(function (r) {
       if (typing) typing.remove();
       if (r.crisis && !instant) addCrisis();
-      if (r.reply) { addMsg('bot', r.reply); chat.history.push({ role: 'assistant', content: r.reply }); }
+      if (r.mood) setMood(r.mood);   // the AI says how the chat feels: happy or sad
+      if (r.reply) { addMsg('bot', r.reply, chat.mood); chat.history.push({ role: 'assistant', content: r.reply }); }
       showCheck(r.check, false);
     }, function (e) {
       if (typing) typing.remove();
@@ -571,28 +589,29 @@
   /* the AI only sees what is typed here once the person has agreed to that, in words they can read */
   function showGate(unavailable) {
     chat.ready = false;
-    $('#journal-gate').hidden = false; msgsEl().hidden = true; $('#composer').hidden = true; $('#finish-chat').hidden = true; $('#new-chat').hidden = true;
-    $('#journal-gate').innerHTML = unavailable
-      ? '<h2>The Journal assistant is not available</h2><p class="muted">It is not set up on this computer yet.</p>'
-      : '<h2>Turn on the AI Journal</h2>' +
-        '<p class="muted">The Journal is a chat with an AI that only asks questions. To do that, what you type is sent to <strong>Claude</strong>, an AI model made by Anthropic.</p>' +
+    $('#pulsie-gate').hidden = false; msgsEl().hidden = true; $('#composer').hidden = true; $('#finish-chat').hidden = true; $('#new-chat').hidden = true;
+    var face = '<img class="gate-face" src="' + FACE.happy + '" alt="Pulsie" width="84" height="84">';
+    $('#pulsie-gate').innerHTML = unavailable
+      ? face + '<h2>Pulsie is not available</h2><p class="muted">It is not set up on this computer yet.</p>'
+      : face + '<h2>Meet Pulsie</h2>' +
+        '<p class="muted">Pulsie is a chat with an AI that only asks questions. To do that, what you type is sent to <strong>Claude</strong>, an AI model made by Anthropic.</p>' +
         '<ul class="gate-list"><li>Pulse does <strong>not</strong> save the chat, and your doctor never sees it.</li>' +
         '<li>Pulse keeps one thing from each check-in: a wellbeing score out of 100.</li>' +
         '<li>If that score is very low, or you mention hurting yourself, Pulse can tell the emergency contact and doctor you chose. You decide that under <a href="healthcare.html#sharing">Healthcare, Sharing &amp; privacy</a>.</li>' +
         '<li>You can turn this off any time in your <a href="profile.html#consents">profile</a>.</li></ul>' +
-        '<div class="btn-row"><button class="btn btn-inline" type="button" id="gate-on">I agree, turn it on</button></div><p class="msg-line err" id="gate-msg" role="alert"></p>';
+        '<div class="btn-row"><button class="btn btn-inline" type="button" id="gate-on">I agree, turn on Pulsie</button></div><p class="msg-line err" id="gate-msg" role="alert"></p>';
   }
-  function openJournal() {
-    $('#journal-gate').hidden = true; msgsEl().hidden = false; $('#composer').hidden = false; $('#finish-chat').hidden = false; $('#new-chat').hidden = false;
+  function openPulsie() {
+    $('#pulsie-gate').hidden = true; msgsEl().hidden = false; $('#composer').hidden = false; $('#finish-chat').hidden = false; $('#new-chat').hidden = false;
     chat.ready = true; if (!msgsEl().children.length) startChat();
   }
-  $('#journal-gate').addEventListener('click', function (e) {
+  $('#pulsie-gate').addEventListener('click', function (e) {
     if (!e.target.closest('#gate-on')) return;
-    P.put('/api/consents', { consents: { ai_journal: true } }).then(openJournal, function (er) { $('#gate-msg').textContent = er.message; });
+    P.put('/api/consents', { consents: { ai_journal: true } }).then(openPulsie, function (er) { $('#gate-msg').textContent = er.message; });
   });
-  RENDER.journal = function () {
+  RENDER.pulsie = function () {
     if (chat.ready) return;
-    P.get('/api/journal/status').then(function (s) { if (!s.available) showGate(true); else if (!s.consent) showGate(); else openJournal(); },
+    P.get('/api/journal/status').then(function (s) { if (!s.available) showGate(true); else if (!s.consent) showGate(); else openPulsie(); },
       function (e) { addMsg('bot', e.message); });
   };
 
@@ -600,6 +619,7 @@
   var current = 'overview';
   function closeDrawer() { $('#sidebar').classList.remove('open'); $('#scrim').hidden = true; $('#menu-btn').setAttribute('aria-expanded', 'false'); }
   function show(id) {
+    if (id === 'journal') id = 'pulsie';   // the old name
     if (!LABEL[id]) id = 'overview';
     current = id;
     $$('.view').forEach(function (v) { v.hidden = v.id !== 'view-' + id; });
@@ -619,7 +639,7 @@
   var profile = $('#profile');
   document.addEventListener('click', function (e) { if (!profile.contains(e.target)) profile.open = false; });
   document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { profile.open = false; closeDrawer(); } });
-  var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { if (!(current === 'journal')) RENDER[current](); }, 150); });
+  var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { if (!(current === 'pulsie')) RENDER[current](); }, 150); });
 
   /* ---------- interactions: each change is saved to the server, then the page reloads its data ---------- */
   function saved(sel, text) { return function () { return refresh().then(function () { if (sel) setMsg(sel, text); }); }; }
